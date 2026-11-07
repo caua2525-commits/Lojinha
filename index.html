@@ -114,6 +114,18 @@ nav button[aria-current="page"]{color:var(--br);background:var(--bg)}
 <div class="two"><button class="sec" data-a="exp">Baixar backup</button><button class="sec" data-a="imp">Restaurar backup</button></div>
 <input type="file" id="imp" accept="application/json,.json" hidden></div>
 </section>
+<section id="v-ped" hidden>
+<div class="card add" id="oauth"><b>Loja online (pedidos dos clientes)</b><div class="mut">Entre com o e-mail do dono. Na primeira vez, toque em Criar conta.</div>
+<input id="oe" type="email" placeholder="E-mail do dono" autocomplete="email"><input id="op" type="password" placeholder="Senha" autocomplete="current-password">
+<div class="two"><button class="pri" data-a="olog">Entrar</button><button class="sec" data-a="oreg">Criar conta</button></div></div>
+<div id="ologged" hidden>
+<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div>
+<label>Chave Pix<input id="px" autocomplete="off"></label>
+<div class="two"><label>Nome no Pix<input id="pn" autocomplete="off"></label><label>Cidade<input id="pc" autocomplete="off"></label></div>
+<label>WhatsApp da loja (com DDD)<input id="pw" inputmode="numeric" autocomplete="off"></label>
+<button class="pri" data-a="osave">Salvar dados</button><button class="sec" data-a="oshare">Enviar o link da loja aos clientes</button><button class="sec" data-a="oout">Sair da conta</button></div>
+<h2>Pedidos</h2><div id="plist"></div><h2>Clientes do app</h2><div id="clist"></div></div>
+</section>
 <section id="v-fiado" hidden><div id="fres"></div></section>
 <section id="v-resumo" hidden>
 <div class="two"><label>Período<select id="per"><option value="d">Dia</option><option value="s">7 dias até a data</option><option value="m">Mês da data</option></select></label><label>Data<input type="date" id="dt"></label></div>
@@ -124,6 +136,7 @@ nav button[aria-current="page"]{color:var(--br);background:var(--bg)}
 <button id="n-estoque" data-a="tab" data-v="estoque">Estoque</button>
 <button id="n-resumo" data-a="tab" data-v="resumo">Resumo</button>
 <button id="n-fiado" data-a="tab" data-v="fiado">Fiado</button>
+<button id="n-ped" data-a="tab" data-v="ped">Pedidos</button>
 </nav>
 <div id="scanbox" hidden><video id="vid" playsinline muted></video><div class="sb"><span id="scanmsg"></span><button class="pri" data-a="scanx">Fechar</button></div></div>
 <script>
@@ -140,7 +153,7 @@ const PL={din:'Dinheiro',pix:'Pix',car:'Cartão',fia:'Fiado'},hh=t=>new Date(t).
 try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('lojinha_v2')||'{}'))}catch(e){}
 const priv=()=>!S.cfg.pin||unlocked,bal=id=>rd(S.led.filter(l=>l.cid===id).reduce((s,l)=>s+l.amt,0));
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',5000)}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){msg('Não foi possível salvar neste navegador.')}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){msg('Não foi possível salvar neste navegador.')}if(window.cloudSync)cloudSync()}
 const send=t=>window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
 const cartTotal=()=>rd(Object.entries(cart).reduce((s,[id,q])=>s+(P(id)?P(id).price*q:0),0));
 
@@ -221,7 +234,7 @@ function render(){
     ||`<p class="mut em">${S.products.length?'Nenhum produto encontrado.':'Cadastre seus produtos na aba Estoque para começar a vender.'}</p>`;
   $('#lista').innerHTML=L.map(p=>`<div class="row"><div class="rh"><input class="nmi" value="${esc(p.name)}" data-f="name" data-id="${p.id}" aria-label="Nome"><button class="del" data-a="del" data-id="${p.id}">${armed===p.id?'Confirmar exclusão':'Excluir'}</button></div><div class="ctl"><label>Estoque<span class="step"><button data-a="dec" data-id="${p.id}" aria-label="Tirar 1">−</button><input type="number" inputmode="numeric" min="0" value="${p.qty}" data-f="qty" data-id="${p.id}"><button data-a="inc" data-id="${p.id}" aria-label="Repor 1">+</button></span></label><label>Avisar com até<input type="number" inputmode="numeric" min="0" value="${mn(p)}" data-f="min" data-id="${p.id}"></label><label>Preço de venda (R$)<input inputmode="decimal" value="${String(p.price).replace('.',',')}" data-f="price" data-id="${p.id}"></label>${priv()?`<label>Custo (R$)<input inputmode="decimal" value="${String(p.cost||0).replace('.',',')}" data-f="cost" data-id="${p.id}"></label>`:''}<label>Categoria<input list="catl" value="${esc(p.cat||'')}" data-f="cat" data-id="${p.id}"></label><label>Código de barras<input inputmode="numeric" value="${esc(p.bar||'')}" data-f="bar" data-id="${p.id}"></label><label>Validade<input type="date" value="${p.exp||''}" data-f="exp" data-id="${p.id}"></label></div></div>`).join('')
     ||`<p class="mut">${S.products.length?'Nenhum produto encontrado.':'Nenhum produto ainda.'}</p>`;
-  renderCart();renderRes();renderFia();ui();
+  renderCart();renderRes();renderFia();ui();if(window.renderPed)renderPed();
 }
 function ui(){
   const nm=S.cfg.name||'Minha Lojinha';$('#ttl').textContent=nm;document.title=nm;
@@ -260,8 +273,8 @@ async function scanStart(mode){
 function scanStop(){clearInterval(scanT);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;$('#scanbox').hidden=true}
 function tab(v){
   armed=null;
-  ['vender','estoque','resumo','fiado'].forEach(k=>{$('#v-'+k).hidden=k!==v;$('#n-'+k).setAttribute('aria-current',k===v?'page':'false')});
-  $('.srch').hidden=$('#cats').hidden=v==='resumo'||v==='fiado';render();scrollTo(0,0);
+  ['vender','estoque','resumo','fiado','ped'].forEach(k=>{$('#v-'+k).hidden=k!==v;$('#n-'+k).setAttribute('aria-current',k===v?'page':'false')});
+  $('.srch').hidden=$('#cats').hidden=v==='resumo'||v==='fiado'||v==='ped';render();scrollTo(0,0);
 }
 function wa(){
   const{m,pt}=agg(),rows=Object.values(m).sort((a,b)=>b.r-a.r),T=sum(m);
@@ -339,6 +352,96 @@ if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 $('#hoje').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
 $('#dt').max=today();
 render();
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,doc,setDoc,getDocs,deleteDoc,updateDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
+const auth=getAuth(app),db=getFirestore(app);
+let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[];
+const ST={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
+const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
+const btn=(a,v,t,c,id)=>`<button class="${c}" data-a="${a}" data-id="${id}"${v?` data-v="${v}"`:''}>${t}</button>`;
+function ui2(){$('#oauth').hidden=!!me;$('#ologged').hidden=!me;$('#owho').textContent=me?'Conectado como '+me.email:''}
+window.renderPed=()=>{
+  const ac=orders.filter(o=>['novo','sep','pronto'].includes(o.st)).sort((a,b)=>a.t-b.t),
+    ol=orders.filter(o=>o.st==='ent'||o.st==='canc').sort((a,b)=>b.t-a.t).slice(0,8),nw=ac.filter(o=>o.st==='novo').length;
+  $('#n-ped').textContent=nw?'Pedidos ('+nw+')':'Pedidos';
+  const bs=o=>{const x=[];
+    if(o.pay==='pix'&&!o.paid&&o.st!=='canc')x.push(btn('opix','','Pix recebido','sec',o.id));
+    if(o.st==='novo')x.push(btn('ost','sep','Separar','pri',o.id));
+    if(o.st==='sep')x.push(btn('ost','pronto','Pronto','pri',o.id));
+    if(o.st==='sep'||o.st==='pronto')x.push(btn('ost','ent','Entregue','pri',o.id));
+    if(['novo','sep','pronto'].includes(o.st))x.push(btn('ost','canc','Cancelar','sec',o.id));
+    return x.join('')};
+  const card=o=>`<div class="row"><div class="rh"><b class="nmi">${esc(o.name)}</b><b>${R(o.total)}</b></div><div class="mut">${hh(o.t)}, ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):'Fiado'}, ${ST[o.st]||o.st}</div><div class="two">${bs(o)}</div></div>`;
+  $('#plist').innerHTML=(ac.concat(ol).map(card).join(''))||'<p class="mut">Nenhum pedido ainda.</p>';
+  $('#clist').innerHTML=Object.entries(cust).map(([id,c])=>`<div class="row"><div class="rh"><b class="nmi">${esc(c.name)}</b><b>${R(bal(id))}</b></div><div class="mut">${esc(c.email||'')}</div><div class="two"><input id="l-${id}" inputmode="decimal" placeholder="Limite (R$)" value="${c.limit||''}">${btn('olim','','Salvar limite','sec',id)}</div>${btn('ofia','',c.fiadoOk?'Bloquear fiado':'Liberar fiado',c.fiadoOk?'sec':'pri',id)}</div>`).join('')||'<p class="mut">Nenhum cliente cadastrado ainda.</p>';
+};
+window.cloudSync=()=>{
+  if(!me||!pub)return;clearTimeout(timer);
+  timer=setTimeout(async()=>{
+    try{
+      const ids=new Set(S.products.map(p=>p.id));
+      for(const p of S.products){const d={name:p.name,price:p.price,qty:p.qty,cat:p.cat||''},j=JSON.stringify(d);
+        if(pub[p.id]!==j){await setDoc(doc(db,'products',p.id),d);pub[p.id]=j}}
+      for(const id in pub)if(!ids.has(id)){await deleteDoc(doc(db,'products',id));delete pub[id]}
+      for(const id in cust){const b=bal(id);if(cust[id].balance!==b){await updateDoc(doc(db,'customers',id),{balance:b});cust[id].balance=b}}
+    }catch(e){erro(e)}
+  },1200);
+};
+async function trans(o,v){
+  const its=o.items||[];
+  if(v==='sep'){
+    for(const i of its){const p=P(i.p);if(!p||p.qty<i.q){msg('Sem estoque suficiente de '+i.n+'.');return}}
+    its.forEach(i=>P(i.p).qty-=i.q);save();
+  }else if(v==='canc'&&(o.st==='sep'||o.st==='pronto')){
+    its.forEach(i=>{const p=P(i.p);if(p)p.qty+=i.q});save();
+  }else if(v==='ent'){
+    if(o.pay==='pix'&&!o.paid){msg('Confirme o Pix recebido antes de entregar.');return}
+    const items=its.filter(i=>P(i.p)).map(i=>({p:i.p,n:P(i.p).name,q:i.q,pr:P(i.p).price,c:P(i.p).cost||0}));
+    const tot=rd(items.reduce((s,i)=>s+i.pr*i.q,0)),sid='o'+o.id;
+    if(o.pay==='fia'&&cust[o.uid]&&bal(o.uid)+tot>(cust[o.uid].limit||0)){msg('Passa do limite de fiado deste cliente. Aumente o limite em Clientes do app.');return}
+    if(!S.sales.some(s=>s.id===sid)){
+      S.sales.push({id:sid,t:Date.now(),d:today(),pay:o.pay==='fia'?'fia':'pix',tot,rec:tot,cid:o.pay==='fia'?o.uid:undefined,items});
+      if(o.pay==='fia'){if(!S.clients.some(c=>c.id===o.uid))S.clients.push({id:o.uid,name:o.name});S.led.push({id:uid(),cid:o.uid,t:Date.now(),d:today(),sid,amt:tot})}
+      save();
+    }
+  }
+  await updateDoc(doc(db,'orders',o.id),{st:v});render();
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id,o=orders.find(x=>x.id===id);
+  try{
+    if(a==='olog'||a==='oreg'){const em=$('#oe').value.trim(),pw=$('#op').value;
+      if(!em||!pw){msg('Informe e-mail e senha.');return}
+      await (a==='olog'?signInWithEmailAndPassword:createUserWithEmailAndPassword)(auth,em,pw)}
+    else if(a==='oout')await signOut(auth);
+    else if(a==='osave'){S.cfg.pix=$('#px').value.trim();S.cfg.pnome=$('#pn').value.trim();S.cfg.pcid=$('#pc').value.trim();S.cfg.wa=$('#pw').value.replace(/\D/g,'');save();
+      await setDoc(doc(db,'config','loja'),{pix:S.cfg.pix,nome:S.cfg.pnome,cidade:S.cfg.pcid,wa:S.cfg.wa,loja:S.cfg.name||''});msg('Dados da loja online salvos.')}
+    else if(a==='oshare')send('Peça pelo app da loja: '+location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'loja.html');
+    else if(a==='opix'&&o){await updateDoc(doc(db,'orders',id),{paid:true});msg('Pix marcado como recebido.')}
+    else if(a==='ost'&&o)await trans(o,b.dataset.v);
+    else if(a==='ofia'&&cust[id])await updateDoc(doc(db,'customers',id),{fiadoOk:!cust[id].fiadoOk});
+    else if(a==='olim'){const v=num($('#l-'+id).value);if(isNaN(v)){msg('Informe o limite em reais.');return}await updateDoc(doc(db,'customers',id),{limit:v});msg('Limite salvo.')}
+  }catch(er){erro(er)}
+});
+onAuthStateChanged(auth,async u=>{
+  unsubs.forEach(f=>f());unsubs=[];me=u;pub=null;ui2();
+  if(!u){orders=[];cust={};render();return}
+  try{
+    const ps=await getDocs(collection(db,'products')),pb={};ps.forEach(d=>pb[d.id]=JSON.stringify(d.data()));pub=pb;
+    unsubs=[
+      onSnapshot(collection(db,'orders'),s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));render()},erro),
+      onSnapshot(collection(db,'customers'),s=>{cust={};s.forEach(d=>cust[d.id]=d.data());let ch=0;
+        for(const id in cust){const c=S.clients.find(x=>x.id===id);if(!c){S.clients.push({id,name:cust[id].name});ch=1}else if(c.name!==cust[id].name){c.name=cust[id].name;ch=1}}
+        if(ch)save();render()},erro)
+    ];
+    cloudSync();
+  }catch(e){erro(e)}
+});
+$('#px').value=S.cfg.pix||'';$('#pn').value=S.cfg.pnome||'';$('#pc').value=S.cfg.pcid||'';$('#pw').value=S.cfg.wa||'';
 </script>
 </body>
 </html>

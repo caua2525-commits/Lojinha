@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f7b4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest-loja.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Loja Andrea</title>
+<style>
+:root{--bg:#eef3f0;--card:#fff;--ink:#14231c;--mut:#5b6b63;--line:#d5e0da;--br:#0f7b4f;--bri:#fff;--wn:#b8341f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1a15;--card:#17261f;--ink:#e8f1ec;--mut:#93a89d;--line:#27382f;--br:#3dbe85;--bri:#08140e;--wn:#ff8a75;color-scheme:dark}}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header,main{max-width:640px;margin:0 auto;padding-left:16px;padding-right:16px}
+header{padding-top:18px}main{padding-top:8px;padding-bottom:40px}
+h1{margin:0;font-size:22px}h2{font-size:16px;margin:20px 0 0}
+.mut{color:var(--mut);font-size:13px}.em{grid-column:1/-1}
+button,input,select{font:inherit;color:inherit}button{touch-action:manipulation;cursor:pointer}
+:focus-visible{outline:2px solid var(--br);outline-offset:2px}
+input,select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0}
+#busca{margin:8px 0 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.sell{background:none;border:0;text-align:left;padding:12px 12px 6px;display:flex;flex-direction:column;gap:2px;flex:1}
+.sell:active:not(:disabled){transform:scale(.97)}.sell:disabled{opacity:.55;cursor:not-allowed}
+.nm{font-weight:650}.st{font-weight:700;margin-top:6px}
+.ft{padding:0 12px 10px;min-height:32px;display:flex;align-items:center}
+.badge{background:var(--br);color:var(--bri);border-radius:99px;padding:2px 9px;font-size:12px;font-weight:650}
+.card,.row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.add{display:flex;flex-direction:column;gap:8px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pri,.sec{border-radius:10px;padding:12px;font-weight:650;border:1px solid var(--line)}
+.pri{background:var(--br);color:var(--bri);border-color:var(--br)}.sec{background:var(--bg)}
+.wa{width:100%;margin-top:18px}
+.rh{display:flex;gap:8px;justify-content:space-between;margin-bottom:4px}
+.del{background:none;border:0;color:var(--wn);font-size:13px;padding:6px 0}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}
+.step{display:flex;gap:6px;align-items:center}
+.step button{width:34px;height:34px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:18px}
+.ci{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+#cart{border-color:var(--br)}
+</style>
+</head>
+<body>
+<header><h1 id="ttl">Loja Andrea</h1><div class="mut" id="who"></div><div class="mut" id="msg" role="status"></div><button class="sec" id="inst" data-a="inst" hidden>Instalar app</button></header>
+<main>
+<section id="auth" class="card add"><b>Entrar ou criar conta</b>
+<input id="nm" placeholder="Seu nome (só para criar a conta)" autocomplete="name">
+<input id="em" type="email" placeholder="E-mail" autocomplete="email">
+<input id="pw" type="password" placeholder="Senha (6 ou mais caracteres)" autocomplete="current-password">
+<div class="two"><button class="pri" data-a="login">Entrar</button><button class="sec" data-a="signup">Criar conta</button></div></section>
+<section id="app" hidden>
+<input id="busca" type="search" placeholder="Buscar produto" autocomplete="off">
+<div class="card add" id="cart" hidden><b>Seu pedido</b><div id="citems"></div>
+<label>Pagamento<select id="pay"><option value="pix">Pix</option><option value="fia" id="ofia">Fiado</option></select></label>
+<button class="pri" data-a="order">Fazer pedido: <span id="ctot"></span></button></div>
+<div class="grid" id="grid"></div>
+<h2>Meus pedidos</h2><div id="olist"></div>
+<h2>Meu fiado</h2><div id="fiado"></div>
+<button class="sec wa" data-a="out">Sair</button>
+</section>
+</main>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,doc,setDoc,addDoc,updateDoc,onSnapshot,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
+const auth=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s);
+const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar',ent:'Entregue',canc:'Cancelado'};
+let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],ip=null;
+const P=id=>prods.find(p=>p.id===id);
+function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
+const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
+const asc=(s,n)=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().slice(0,n);
+const tl=(i,v)=>i+String(v.length).padStart(2,'0')+v;
+function crc(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=c&0x8000?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')}
+function pixCode(o){
+  const p='000201010211'+tl('26',tl('00','br.gov.bcb.pix')+tl('01',cfg.pix))+'52040000'+'5303986'+tl('54',(+o.total).toFixed(2))+'5802BR'+tl('59',asc(cfg.nome||'LOJA',25))+tl('60',asc(cfg.cidade||'BRASIL',15))+tl('62',tl('05',String(o.id).replace(/[^A-Za-z0-9]/g,'').slice(0,20)||'***'))+'6304';
+  return p+crc(p);
+}
+function ocard(o){
+  const pix=o.pay==='pix'&&!o.paid&&o.st!=='canc';
+  return `<div class="row"><div class="rh"><b>${ST[o.st]||o.st}</b><b>${R(o.total)}</b></div><div class="mut">${new Date(o.t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}: ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado pela loja':'Pagamento: Pix'):'Pagamento: fiado'}</div>`
+  +(pix?(cfg.pix?`<button class="pri" data-a="pix" data-id="${o.id}">Copiar Pix copia e cola</button><div class="mut">Cole no app do seu banco, em Pix. A loja confirma quando o pagamento chegar.</div>`:'<div class="mut">A loja ainda não cadastrou a chave Pix.</div>'):'')
+  +(o.st==='novo'&&cfg.wa?`<button class="sec" data-a="zap" data-id="${o.id}">Avisar a loja no WhatsApp</button>`:'')
+  +(o.st==='novo'?`<button class="del" data-a="ocanc" data-id="${o.id}">Cancelar pedido</button>`:'')+`</div>`;
+}
+function render(){
+  const f=$('#busca').value.trim().toLowerCase(),ids=Object.keys(cart).filter(P),tot=ids.reduce((s,id)=>s+P(id).price*cart[id],0);
+  $('#grid').innerHTML=prods.filter(p=>p.name.toLowerCase().includes(f)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const c=cart[p.id]||0;
+    return `<div class="tile"><button class="sell" data-a="add" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="nm">${esc(p.name)}</span><span class="mut">${R(p.price)}</span><span class="st">${p.qty<=0?'Esgotado':'Disponível: '+p.qty}</span></button><div class="ft">${c?`<span class="badge">${c} no pedido</span>`:''}</div></div>`}).join('')||'<p class="mut em">Nenhum produto disponível.</p>';
+  $('#cart').hidden=!ids.length;
+  $('#citems').innerHTML=ids.map(id=>`<div class="ci"><span>${esc(P(id).name)}</span><span class="step"><button data-a="cm" data-id="${id}" aria-label="Tirar 1">−</button><b>${cart[id]}</b><button data-a="add" data-id="${id}" aria-label="Pôr 1">+</button></span><b>${R(P(id).price*cart[id])}</b></div>`).join('');
+  $('#ctot').textContent=R(tot);
+  $('#ofia').hidden=$('#ofia').disabled=!cust.fiadoOk;if(!cust.fiadoOk)$('#pay').value='pix';
+  $('#olist').innerHTML=orders.map(ocard).join('')||'<p class="mut">Você ainda não fez pedidos.</p>';
+  $('#fiado').innerHTML=cust.fiadoOk?`<div class="card"><b>${R(cust.balance||0)}</b><div class="mut">Seu saldo no fiado. Limite: ${R(cust.limit||0)}</div></div>`:'<p class="mut">O fiado ainda não foi liberado para você. Fale com a loja.</p>';
+}
+async function order(){
+  const ids=Object.keys(cart).filter(P);if(!ids.length)return;
+  const items=ids.map(id=>({p:id,n:P(id).name,q:cart[id],pr:P(id).price})),total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,pay=$('#pay').value;
+  if(pay==='fia'&&(cust.balance||0)+total>(cust.limit||0)){msg('Esse pedido passa do seu limite de fiado.');return}
+  await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,t:Date.now()});
+  cart={};render();msg('Pedido enviado! Acompanhe em Meus pedidos.');
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id,o=orders.find(x=>x.id===id);
+  try{
+    if(a==='add'){const p=P(id);if(!p)return;const n=(cart[id]||0)+1;if(n>p.qty){msg('Só temos '+p.qty+' em estoque.');return}cart[id]=n;render()}
+    else if(a==='cm'){cart[id]--;if(cart[id]<=0)delete cart[id];render()}
+    else if(a==='order')await order();
+    else if(a==='login'||a==='signup'){
+      const nm=$('#nm').value.trim(),em=$('#em').value.trim(),pw=$('#pw').value;
+      if(!em||!pw||(a==='signup'&&!nm)){msg(a==='signup'?'Preencha nome, e-mail e senha.':'Informe e-mail e senha.');return}
+      if(a==='login')await signInWithEmailAndPassword(auth,em,pw);
+      else{const cr=await createUserWithEmailAndPassword(auth,em,pw);await updateProfile(cr.user,{displayName:nm});
+        await setDoc(doc(db,'customers',cr.user.uid),{name:nm,email:em,fiadoOk:false,limit:0,balance:0})}
+    }
+    else if(a==='out')await signOut(auth);
+    else if(a==='pix'&&o){await navigator.clipboard.writeText(pixCode(o));msg('Código copiado. No app do banco, escolha Pix Copia e Cola.')}
+    else if(a==='ocanc')await updateDoc(doc(db,'orders',id),{st:'canc'});
+    else if(a==='zap'&&o){const w=String(cfg.wa).replace(/\D/g,'');window.open('https://wa.me/'+(w.length<=11?'55':'')+w+'?text='+encodeURIComponent('Fiz um pedido no app: '+(o.items||[]).map(i=>i.q+'x '+i.n).join(', ')+'. Total '+R(o.total)+'. Nome: '+o.name),'_blank')}
+    else if(a==='inst'){if(ip)ip.prompt();b.hidden=true}
+  }catch(er){erro(er)}
+});
+document.addEventListener('input',e=>{if(e.target.id==='busca')render()});
+onAuthStateChanged(auth,u=>{
+  unsubs.forEach(f=>f());unsubs=[];me=u;cust={};orders=[];cart={};
+  $('#auth').hidden=!!u;$('#app').hidden=!u;$('#who').textContent=u?(u.displayName||u.email):'';
+  if(!u){render();return}
+  unsubs=[
+    onSnapshot(collection(db,'products'),s=>{prods=s.docs.map(d=>({id:d.id,...d.data()}));render()},erro),
+    onSnapshot(doc(db,'customers',u.uid),s=>{cust=s.data()||{};render()},erro),
+    onSnapshot(doc(db,'config','loja'),s=>{cfg=s.data()||{};$('#ttl').textContent=document.title=cfg.loja||'Loja Andrea';render()},erro),
+    onSnapshot(query(collection(db,'orders'),where('uid','==',u.uid)),s=>{orders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.t-a.t);render()},erro)
+  ];
+});
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#inst').hidden=false});
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+render();
+</script>
+</body>
+</html>
