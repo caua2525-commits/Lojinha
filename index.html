@@ -38,28 +38,37 @@ input,select{background:var(--bg);border:1px solid var(--line);border-radius:10p
 .nm{font-weight:650}
 .st{font-size:20px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
 .st.low{color:var(--wn)}
-.ft{display:flex;justify-content:space-between;align-items:center;padding:0 12px 10px;min-height:34px}
-.und{background:none;border:1px solid var(--line);border-radius:8px;padding:3px 9px;font-size:13px}
+.ft{padding:0 12px 10px;min-height:32px;display:flex;align-items:center}
+.badge{background:var(--br);color:var(--bri);border-radius:99px;padding:2px 9px;font-size:12px;font-weight:650}
 .card,.row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
-.add{display:flex;flex-direction:column;gap:8px}
+.add,#cash,#cart{display:flex;flex-direction:column;gap:8px}
+#cart{border-color:var(--br)}
 .two,.ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pri,.sec{border-radius:10px;padding:12px;font-weight:650;border:1px solid var(--line)}
 .pri{background:var(--br);color:var(--bri);border-color:var(--br)}
 .sec{background:var(--bg)}
 .wa{width:100%;margin-top:14px}
 #inst{margin-top:8px}
-.rh{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.rh{display:flex;gap:8px;align-items:center;margin-bottom:6px;justify-content:space-between}
 .nmi{font-weight:650;flex:1}
-.del{background:none;border:0;color:var(--wn);font-size:13px;padding:4px;white-space:nowrap}
+.del{background:none;border:0;color:var(--wn);font-size:13px;padding:4px 0;white-space:nowrap}
 label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}
-.step{display:flex;gap:6px}
-.step button{width:42px;flex:none;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:20px}
+.step{display:flex;gap:6px;align-items:center}
+.step button{width:42px;height:40px;flex:none;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:20px}
 .step input{text-align:center}
+.ci{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.ci .step button{width:34px;height:34px;font-size:18px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button,.chips button{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--br);color:var(--bri);border-color:var(--br)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chips button{border-radius:99px;padding:4px 14px}
+.troco{font-weight:700;min-height:22px}
+.pl{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}
 table{width:100%;border-collapse:collapse;margin-top:10px;font-variant-numeric:tabular-nums}
 th,td{padding:9px 4px;border-bottom:1px solid var(--line);text-align:right}
 th:first-child,td:first-child{text-align:left}
 th{font-size:12px;color:var(--mut);font-weight:600}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .chip{background:var(--wb);color:var(--wn);border-radius:99px;padding:4px 10px;font-size:13px}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
 nav button{flex:1;background:none;border:0;padding:10px 4px;border-radius:10px;color:var(--mut);font-weight:600}
@@ -70,7 +79,13 @@ nav button[aria-current="page"]{color:var(--br);background:var(--bg)}
 <header><h1>Minha Lojinha</h1><div class="mut" id="hoje"></div><div class="mut" id="msg" role="status"></div><button class="sec" id="inst" data-a="inst" hidden>Instalar app</button></header>
 <main>
 <input id="busca" type="search" placeholder="Buscar produto" autocomplete="off">
-<section id="v-vender"><div class="tot" id="tot"></div><div class="grid" id="grid"></div></section>
+<section id="v-vender"><div class="tot" id="tot"></div>
+<div class="card" id="cart" hidden><b>Carrinho</b><div id="citems"></div>
+<div class="seg"><button data-a="pay" data-v="din">Dinheiro</button><button data-a="pay" data-v="pix">Pix</button><button data-a="pay" data-v="car">Cartão</button></div>
+<div id="cash"><label>Valor recebido (R$)<input id="rec" inputmode="decimal" placeholder="Em branco = valor exato"></label><div class="chips" id="quick"></div></div>
+<div class="troco" id="troco"></div>
+<button class="pri" data-a="done" id="done">Registrar venda</button></div>
+<div class="grid" id="grid"></div></section>
 <section id="v-estoque" hidden>
 <div class="card add"><b>Novo produto</b>
 <input id="nn" placeholder="Nome (ex.: Coca-Cola 2L)" autocomplete="off">
@@ -92,33 +107,47 @@ nav button[aria-current="page"]{color:var(--br);background:var(--bg)}
 <button id="n-resumo" data-a="tab" data-v="resumo">Resumo</button>
 </nav>
 <script>
-const KEY='lojinha_v2',$=s=>document.querySelector(s);
+const KEY='lojinha_v3',$=s=>document.querySelector(s);
+let S={products:[],sales:[],days:{}},cart={},pay='din',day=new Date().toLocaleDateString('sv-SE'),armed=null,ip=null;
 const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today=()=>new Date().toLocaleDateString('sv-SE');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const num=v=>{v=parseFloat(String(v).replace(',','.'));return v>=0?v:NaN};
-const mn=p=>p.min??5;
-let S={products:[],days:{}},day=today(),armed=null,ip=null;
-try{S=JSON.parse(localStorage.getItem(KEY))||S}catch(e){}
-function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',4000)}
+const mn=p=>p.min??5,rd=v=>Math.round(v*100)/100,P=id=>S.products.find(x=>x.id===id);
+const PL={din:'Dinheiro',pix:'Pix',car:'Cartão'},hh=t=>new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('lojinha_v2')||'{}'))}catch(e){}
+function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',5000)}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){msg('Não foi possível salvar neste navegador.')}}
+const send=t=>window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
+const cartTotal=()=>rd(Object.entries(cart).reduce((s,[id,q])=>s+(P(id)?P(id).price*q:0),0));
 
-function sell(id,dir){
-  const p=S.products.find(x=>x.id===id);if(!p)return;
-  const d=today(),t=S.days[d]=S.days[d]||{},it=t[id]||{n:p.name,q:0,r:0,c:0};
-  if(dir>0){if(p.qty<=0)return;it.q++;it.r+=p.price;it.c+=p.cost||0;p.qty--}
-  else{if(it.q<=0)return;it.r-=it.r/it.q;it.c-=it.c/it.q;it.q--;p.qty++}
-  it.r=Math.round(it.r*100)/100;it.c=Math.round(it.c*100)/100;it.n=p.name;
-  if(it.q>0)t[id]=it;else delete t[id];
-  save();render();
+function addCart(id,d){
+  const p=P(id);if(!p)return;const n=(cart[id]||0)+d;
+  if(n>p.qty){msg('Estoque insuficiente.');return}
+  if(n<=0)delete cart[id];else cart[id]=n;
+  render();
+}
+function checkout(){
+  const ids=Object.keys(cart).filter(P);if(!ids.length)return;
+  const tot=cartTotal();let rec=tot;
+  if(pay==='din'&&$('#rec').value.trim()){rec=num($('#rec').value);if(isNaN(rec)||rec<tot){msg('O valor recebido é menor que o total.');return}}
+  const items=ids.map(id=>{const p=P(id),q=cart[id];p.qty-=q;return{p:id,n:p.name,q,pr:p.price,c:p.cost||0}});
+  S.sales.push({id:uid(),t:Date.now(),d:today(),pay,tot,rec,items});
+  const tr=pay==='din'?rd(rec-tot):0;
+  cart={};$('#rec').value='';save();render();
+  msg(tr>0?'Venda registrada. Troco: '+R(tr):'Venda registrada.');
+}
+function cancel(id){
+  const s=S.sales.find(x=>x.id===id);if(!s)return;
+  s.items.forEach(i=>{const p=P(i.p);if(p)p.qty+=i.q});
+  S.sales=S.sales.filter(x=>x!==s);armed=null;save();render();msg('Venda cancelada e estoque devolvido.');
 }
 function add(){
   const n=$('#nn').value.trim(),pr=num($('#np').value),co=num($('#nc').value||0),qt=num($('#nq').value||0),mi=num($('#nm').value||5);
   if(!n||isNaN(pr)){msg('Informe o nome e o preço do produto.');return}
   S.products.push({id:uid(),name:n,price:pr,cost:co||0,qty:Math.round(qt)||0,min:isNaN(mi)?5:Math.round(mi)});
-  ['#nn','#np','#nc','#nq','#nm'].forEach(s=>$(s).value='');
-  save();render();msg('Produto adicionado.');
+  ['#nn','#np','#nc','#nq','#nm'].forEach(s=>$(s).value='');save();render();msg('Produto adicionado.');
 }
 function range(){
   const p=$('#per').value,d=new Date(day+'T12:00:00'),out=[],f=x=>x.toLocaleDateString('sv-SE');
@@ -127,33 +156,45 @@ function range(){
   for(let i=6;i>=0;i--){const x=new Date(d);x.setDate(d.getDate()-i);out.push(f(x))}
   return out;
 }
-function agg(){
-  const m={};
-  range().forEach(d=>Object.entries(S.days[d]||{}).forEach(([id,i])=>{
-    const a=m[id]=m[id]||{n:i.n,q:0,r:0,c:0};a.q+=i.q;a.r+=i.r;a.c+=i.c||0}));
-  return m;
+function agg(ds=range()){
+  const m={},pt={din:0,pix:0,car:0,old:0},get=(id,n)=>m[id]=m[id]||{n,q:0,r:0,c:0};
+  ds.forEach(d=>Object.entries(S.days[d]||{}).forEach(([id,i])=>{const a=get(id,i.n);a.q+=i.q;a.r+=i.r;a.c+=i.c||0;pt.old+=i.r}));
+  S.sales.filter(s=>ds.includes(s.d)).forEach(s=>{pt[s.pay]+=s.tot;s.items.forEach(i=>{const a=get(i.p,i.n);a.q+=i.q;a.r+=i.pr*i.q;a.c+=i.c*i.q})});
+  return{m,pt};
+}
+const sum=m=>Object.values(m).reduce((s,i)=>({q:s.q+i.q,r:s.r+i.r,c:s.c+i.c}),{q:0,r:0,c:0});
+function troco(){
+  const v=num($('#rec').value),t=cartTotal(),has=$('#rec').value.trim();
+  $('#troco').textContent=pay!=='din'||!has?'':(v>=t?'Troco: '+R(v-t):'O valor é menor que o total');
+}
+function renderCart(){
+  const ids=Object.keys(cart).filter(P);$('#cart').hidden=!ids.length;
+  $('#citems').innerHTML=ids.map(id=>`<div class="ci"><span>${esc(P(id).name)}</span><span class="step"><button data-a="cm" data-id="${id}" aria-label="Tirar 1">−</button><b>${cart[id]}</b><button data-a="cp" data-id="${id}" aria-label="Pôr 1">+</button></span><b>${R(P(id).price*cart[id])}</b></div>`).join('');
+  $('#done').textContent='Registrar venda: '+R(cartTotal());
+  $('#cash').hidden=pay!=='din';
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===pay));
+  $('#quick').innerHTML=['Valor exato','20','50','100'].map(v=>`<button data-a="cash" data-v="${v}">${v==='Valor exato'?v:'R$ '+v}</button>`).join('');
+  troco();
 }
 function renderRes(){
-  const m=agg(),rows=Object.entries(m).sort((a,b)=>b[1].r-a[1].r),
-    T=rows.reduce((s,[,i])=>({q:s.q+i.q,r:s.r+i.r,c:s.c+i.c}),{q:0,r:0,c:0}),
-    low=S.products.filter(p=>p.qty<=mn(p));
+  const{m,pt}=agg(),rows=Object.entries(m).sort((a,b)=>b[1].r-a[1].r),T=sum(m),need=S.products.filter(p=>p.qty<=mn(p));
+  const one=$('#per').value==='d',ss=one?S.sales.filter(s=>s.d===day).sort((a,b)=>b.t-a.t):[];
   $('#dt').value=day;
   $('#res').innerHTML=`<div class="tot"><span>Total vendido</span><b>${R(T.r)}</b><span>${T.q} ${T.q==1?'item':'itens'}${T.c>0?`, lucro estimado ${R(T.r-T.c)}`:''}</span></div>`
-  +(rows.length?`<table><tr><th>Produto</th><th>Qtd</th><th>Total</th><th>Estoque</th></tr>${rows.map(([id,i])=>{const p=S.products.find(x=>x.id===id);return `<tr><td>${esc(i.n)}</td><td>${i.q}</td><td>${R(i.r)}</td><td>${p?p.qty:'-'}</td></tr>`}).join('')}</table><button class="pri wa" data-a="wa">Enviar resumo no WhatsApp</button>`:`<p class="mut">Nenhuma venda neste período.</p>`)
-  +`<h2>Acabando no estoque</h2>`+(low.length?`<div class="chips">${low.map(p=>`<span class="chip">${esc(p.name)}: ${p.qty}</span>`).join('')}</div>`:`<p class="mut">Nenhum produto abaixo do mínimo.</p>`);
+  +`<div class="card"><b>Fechamento por forma de pagamento</b>${['din','pix','car'].map(k=>`<div class="pl"><span>${PL[k]}${k==='din'?' (no caixa)':''}</span><b>${R(pt[k])}</b></div>`).join('')}${pt.old>0?`<div class="pl"><span>Sem forma registrada</span><b>${R(pt.old)}</b></div>`:''}</div>`
+  +(rows.length?`<table><tr><th>Produto</th><th>Qtd</th><th>Total</th><th>Estoque</th></tr>${rows.map(([id,i])=>`<tr><td>${esc(i.n)}</td><td>${i.q}</td><td>${R(i.r)}</td><td>${P(id)?P(id).qty:'-'}</td></tr>`).join('')}</table><button class="pri wa" data-a="wa">Enviar resumo no WhatsApp</button>`:`<p class="mut">Nenhuma venda neste período.</p>`)
+  +(ss.length?`<h2>Vendas do dia</h2>${ss.map(s=>`<div class="row"><div class="rh"><b class="nmi">${hh(s.t)}, ${PL[s.pay]}</b><b>${R(s.tot)}</b></div><div class="mut">${s.items.map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><button class="del" data-a="cancel" data-id="${s.id}">${armed===s.id?'Confirmar cancelamento':'Cancelar venda'}</button></div>`).join('')}`:'')
+  +`<h2>Lista de compras</h2>`+(need.length?`<div class="chips">${need.map(p=>`<span class="chip">${esc(p.name)}: restam ${p.qty}</span>`).join('')}</div><button class="pri wa" data-a="buy">Enviar lista pelo WhatsApp</button>`:`<p class="mut">Nenhum produto abaixo do mínimo.</p>`);
 }
 function render(){
-  const f=$('#busca').value.trim().toLowerCase(),
-    P=S.products.filter(p=>p.name.toLowerCase().includes(f)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),
-    t=S.days[today()]||{},its=Object.values(t),
-    r=its.reduce((s,i)=>s+i.r,0),n=its.reduce((s,i)=>s+i.q,0),c=its.reduce((s,i)=>s+(i.c||0),0);
-  $('#tot').innerHTML=`<span>Vendido hoje</span><b>${R(r)}</b><span>${n} ${n==1?'item':'itens'}${c>0?`, lucro estimado ${R(r-c)}`:''}</span>`;
-  $('#grid').innerHTML=P.map(p=>{const s=(t[p.id]||{}).q||0;
-    return `<div class="tile"><button class="sell" data-a="sell" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="nm">${esc(p.name)}</span><span class="mut">${R(p.price)}</span><span class="st${p.qty<=mn(p)?' low':''}">${p.qty<=0?'Esgotado':p.qty+' em estoque'}</span></button><div class="ft"><span class="mut">${s} hoje</span>${s?`<button class="und" data-a="undo" data-id="${p.id}">Desfazer</button>`:''}</div></div>`}).join('')
+  const f=$('#busca').value.trim().toLowerCase(),L=S.products.filter(p=>p.name.toLowerCase().includes(f)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),T=sum(agg([today()]).m);
+  $('#tot').innerHTML=`<span>Vendido hoje</span><b>${R(T.r)}</b><span>${T.q} ${T.q==1?'item':'itens'}${T.c>0?`, lucro estimado ${R(T.r-T.c)}`:''}</span>`;
+  $('#grid').innerHTML=L.map(p=>{const c=cart[p.id]||0;
+    return `<div class="tile"><button class="sell" data-a="cp" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="nm">${esc(p.name)}</span><span class="mut">${R(p.price)}</span><span class="st${p.qty<=mn(p)?' low':''}">${p.qty<=0?'Esgotado':p.qty+' em estoque'}</span></button><div class="ft">${c?`<span class="badge">${c} no carrinho</span>`:'<span class="mut">Toque para adicionar</span>'}</div></div>`}).join('')
     ||`<p class="mut em">${S.products.length?'Nenhum produto encontrado.':'Cadastre seus produtos na aba Estoque para começar a vender.'}</p>`;
-  $('#lista').innerHTML=P.map(p=>`<div class="row"><div class="rh"><input class="nmi" value="${esc(p.name)}" data-f="name" data-id="${p.id}" aria-label="Nome"><button class="del" data-a="del" data-id="${p.id}">${armed===p.id?'Confirmar exclusão':'Excluir'}</button></div><div class="ctl"><label>Estoque<span class="step"><button data-a="dec" data-id="${p.id}" aria-label="Tirar 1">−</button><input type="number" inputmode="numeric" min="0" value="${p.qty}" data-f="qty" data-id="${p.id}"><button data-a="inc" data-id="${p.id}" aria-label="Repor 1">+</button></span></label><label>Avisar com até<input type="number" inputmode="numeric" min="0" value="${mn(p)}" data-f="min" data-id="${p.id}"></label><label>Preço de venda (R$)<input inputmode="decimal" value="${String(p.price).replace('.',',')}" data-f="price" data-id="${p.id}"></label><label>Custo (R$)<input inputmode="decimal" value="${String(p.cost||0).replace('.',',')}" data-f="cost" data-id="${p.id}"></label></div></div>`).join('')
+  $('#lista').innerHTML=L.map(p=>`<div class="row"><div class="rh"><input class="nmi" value="${esc(p.name)}" data-f="name" data-id="${p.id}" aria-label="Nome"><button class="del" data-a="del" data-id="${p.id}">${armed===p.id?'Confirmar exclusão':'Excluir'}</button></div><div class="ctl"><label>Estoque<span class="step"><button data-a="dec" data-id="${p.id}" aria-label="Tirar 1">−</button><input type="number" inputmode="numeric" min="0" value="${p.qty}" data-f="qty" data-id="${p.id}"><button data-a="inc" data-id="${p.id}" aria-label="Repor 1">+</button></span></label><label>Avisar com até<input type="number" inputmode="numeric" min="0" value="${mn(p)}" data-f="min" data-id="${p.id}"></label><label>Preço de venda (R$)<input inputmode="decimal" value="${String(p.price).replace('.',',')}" data-f="price" data-id="${p.id}"></label><label>Custo (R$)<input inputmode="decimal" value="${String(p.cost||0).replace('.',',')}" data-f="cost" data-id="${p.id}"></label></div></div>`).join('')
     ||`<p class="mut">${S.products.length?'Nenhum produto encontrado.':'Nenhum produto ainda.'}</p>`;
-  renderRes();
+  renderCart();renderRes();
 }
 function tab(v){
   armed=null;
@@ -161,11 +202,11 @@ function tab(v){
   $('#busca').hidden=v==='resumo';render();scrollTo(0,0);
 }
 function wa(){
-  const rows=Object.values(agg()).sort((a,b)=>b.r-a.r),T=rows.reduce((s,i)=>s+i.r,0),n=rows.reduce((s,i)=>s+i.q,0);
+  const{m,pt}=agg(),rows=Object.values(m).sort((a,b)=>b.r-a.r),T=sum(m);
   const lb=$('#per').selectedOptions[0].text+' ('+day.split('-').reverse().join('/')+')';
-  const t=`*Resumo da lojinha: ${lb}*\nTotal: ${R(T)}\nItens: ${n}\n`+rows.map(i=>`- ${i.n}: ${i.q} un, ${R(i.r)}`).join('\n');
-  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
+  send(`*Resumo da lojinha: ${lb}*\nTotal: ${R(T.r)}\nItens: ${T.q}\nDinheiro: ${R(pt.din)}\nPix: ${R(pt.pix)}\nCartão: ${R(pt.car)}\n`+rows.map(i=>`- ${i.n}: ${i.q} un, ${R(i.r)}`).join('\n'));
 }
+function buy(){send('*Lista de compras*\n'+S.products.filter(p=>p.qty<=mn(p)).map(p=>`- ${p.name} (restam ${p.qty})`).join('\n'))}
 function exp(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));
@@ -174,32 +215,38 @@ function exp(){
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
-  const a=b.dataset.a,id=b.dataset.id,p=S.products.find(x=>x.id===id);
-  if(a==='sell')sell(id,1);
-  else if(a==='undo')sell(id,-1);
+  const a=b.dataset.a,id=b.dataset.id,p=P(id),v=b.dataset.v;
+  if(a==='cp')addCart(id,1);
+  else if(a==='cm')addCart(id,-1);
+  else if(a==='pay'){pay=v;renderCart()}
+  else if(a==='cash'){$('#rec').value=v==='Valor exato'?'':v;troco()}
+  else if(a==='done')checkout();
+  else if(a==='cancel'){if(armed===id)cancel(id);else{armed=id;renderRes()}}
   else if(a==='inc'&&p){p.qty++;save();render()}
   else if(a==='dec'&&p&&p.qty>0){p.qty--;save();render()}
-  else if(a==='del'){if(armed===id){S.products=S.products.filter(x=>x.id!==id);armed=null;save()}else armed=id;render()}
+  else if(a==='del'){if(armed===id){S.products=S.products.filter(x=>x.id!==id);delete cart[id];armed=null;save()}else armed=id;render()}
   else if(a==='add')add();
-  else if(a==='tab')tab(b.dataset.v);
+  else if(a==='tab')tab(v);
   else if(a==='wa')wa();
+  else if(a==='buy')buy();
   else if(a==='exp')exp();
   else if(a==='imp')$('#imp').click();
   else if(a==='inst'){if(ip)ip.prompt();b.hidden=true}
 });
-document.addEventListener('input',e=>{if(e.target.id==='busca')render()});
+document.addEventListener('input',e=>{if(e.target.id==='busca')render();else if(e.target.id==='rec')troco()});
 document.addEventListener('change',e=>{
-  const t=e.target,f=t.dataset.f,p=S.products.find(x=>x.id===t.dataset.id);
+  const t=e.target,f=t.dataset.f,p=P(t.dataset.id);
   if(f&&p){
     const v=num(t.value);
     if(f==='name'){if(t.value.trim())p.name=t.value.trim()}
     else if(!isNaN(v))p[f]=(f==='qty'||f==='min')?Math.round(v):v;
+    if(cart[p.id]>p.qty)cart[p.id]=p.qty;if(!cart[p.id])delete cart[p.id];
     save();render();
-  }else if(t.id==='dt'){day=t.value||today();renderRes()}
+  }else if(t.id==='dt'){day=t.value||today();armed=null;renderRes()}
   else if(t.id==='per')renderRes();
   else if(t.id==='imp'){
     const file=t.files[0];if(!file)return;
-    file.text().then(x=>{const o=JSON.parse(x);if(!Array.isArray(o.products)||typeof o.days!=='object')throw 0;S=o;save();render();msg('Backup restaurado.')})
+    file.text().then(x=>{const o=JSON.parse(x);if(!Array.isArray(o.products))throw 0;S=Object.assign({products:[],sales:[],days:{}},o);cart={};save();render();msg('Backup restaurado.')})
       .catch(()=>msg('Arquivo de backup inválido.'));
     t.value='';
   }
