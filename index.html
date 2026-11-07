@@ -82,6 +82,7 @@ nav button[aria-current="page"]{color:var(--br);background:var(--bg)}
 #scanbox{position:fixed;inset:0;z-index:10;background:#000;display:flex;flex-direction:column}
 #vid{flex:1;width:100%;min-height:0;object-fit:cover}
 .sb{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));background:var(--card)}
+#msg:not(:empty){position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -346,6 +347,8 @@ document.addEventListener('keydown',e=>{
   const c=e.target.value.trim(),p=c&&S.products.find(x=>x.bar===c);
   if(p){e.target.value='';addCart(p.id,1)}
 });
+addEventListener('unhandledrejection',e=>msg('Erro: '+((e.reason&&(e.reason.code||e.reason.message))||e.reason)));
+addEventListener('error',e=>msg('Erro: '+e.message));
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#inst').hidden=false});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
@@ -353,7 +356,7 @@ $('#hoje').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day
 $('#dt').max=today();
 render();
 </script>
-<script type="module">
+<script type="module" onerror="msg('Não consegui carregar o Firebase. Confira a internet e tente de novo.')">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {getFirestore,collection,doc,setDoc,getDocs,deleteDoc,updateDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -361,7 +364,7 @@ const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDo
 const auth=getAuth(app),db=getFirestore(app);
 let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[];
 const ST={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
-const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
+const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
 const btn=(a,v,t,c,id)=>`<button class="${c}" data-a="${a}" data-id="${id}"${v?` data-v="${v}"`:''}>${t}</button>`;
 function ui2(){$('#oauth').hidden=!!me;$('#ologged').hidden=!me;$('#owho').textContent=me?'Conectado como '+me.email:''}
 window.renderPed=()=>{

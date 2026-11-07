@@ -43,6 +43,7 @@ label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)
 .step button{width:34px;height:34px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:18px}
 .ci{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 #cart{border-color:var(--br)}
+#msg:not(:empty){position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -64,7 +65,7 @@ label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)
 <button class="sec wa" data-a="out">Sair</button>
 </section>
 </main>
-<script type="module">
+<script type="module" onerror="document.getElementById('msg').textContent='Não consegui carregar o Firebase. Confira a internet e tente de novo.'">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {getFirestore,collection,doc,setDoc,addDoc,updateDoc,onSnapshot,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -76,7 +77,7 @@ const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para
 let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],ip=null;
 const P=id=>prods.find(p=>p.id===id);
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
-const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
+const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
 const asc=(s,n)=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().slice(0,n);
 const tl=(i,v)=>i+String(v.length).padStart(2,'0')+v;
 function crc(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=c&0x8000?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')}
@@ -143,6 +144,7 @@ onAuthStateChanged(auth,u=>{
 });
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#inst').hidden=false});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+addEventListener('unhandledrejection',e=>erro(e.reason||{}));
 render();
 </script>
 </body>
