@@ -44,6 +44,10 @@ label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)
 .ci{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 #cart{border-color:var(--br)}
 #msg:not(:empty){position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.chips button{background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-weight:600}
+.chips button[aria-pressed="true"]{background:var(--br);color:var(--bri);border-color:var(--br)}
+textarea{width:100%;font:12px/1.3 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;resize:none}
 </style>
 </head>
 <body>
@@ -56,8 +60,10 @@ label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)
 <div class="two"><button class="pri" data-a="login">Entrar</button><button class="sec" data-a="signup">Criar conta</button></div></section>
 <section id="app" hidden>
 <input id="busca" type="search" placeholder="Buscar produto" autocomplete="off">
+<div class="chips" id="cats"></div>
 <div class="card add" id="cart" hidden><b>Seu pedido</b><div id="citems"></div>
 <label>Pagamento<select id="pay"><option value="pix">Pix</option><option value="fia" id="ofia">Fiado</option></select></label>
+<div class="mut" id="pixnote">Depois de enviar o pedido, o código Pix aparece em Meus pedidos.</div>
 <button class="pri" data-a="order">Fazer pedido: <span id="ctot"></span></button></div>
 <div class="grid" id="grid"></div>
 <h2>Meus pedidos</h2><div id="olist"></div>
@@ -74,27 +80,41 @@ const auth=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s);
 const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar',ent:'Entregue',canc:'Cancelado'};
-let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],ip=null;
+let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],ip=null,catF='';
 const P=id=>prods.find(p=>p.id===id);
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
 const asc=(s,n)=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().slice(0,n);
 const tl=(i,v)=>i+String(v.length).padStart(2,'0')+v;
 function crc(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=c&0x8000?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')}
+const cpfOk=d=>{if(d.length!==11||/^(\d)\1+$/.test(d))return false;for(let t=9;t<11;t++){let s=0;for(let i=0;i<t;i++)s+=d[i]*(t+1-i);if((s*10%11)%10!=d[t])return false}return true};
+function pixKey(k){
+  k=String(k||'').trim();if(k.includes('@'))return k.toLowerCase();
+  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k))return k.toLowerCase();
+  const d=k.replace(/\D/g,'');
+  if(k[0]==='+')return '+'+d;
+  if(d.length===13&&d.startsWith('55'))return '+'+d;
+  if(d.length===11)return cpfOk(d)?d:'+55'+d;
+  if(d.length===10)return '+55'+d;
+  return d.length>=11&&/^[\d.\/-]+$/.test(k)?d:k;
+}
 function pixCode(o){
-  const p='000201010211'+tl('26',tl('00','br.gov.bcb.pix')+tl('01',cfg.pix))+'52040000'+'5303986'+tl('54',(+o.total).toFixed(2))+'5802BR'+tl('59',asc(cfg.nome||'LOJA',25))+tl('60',asc(cfg.cidade||'BRASIL',15))+tl('62',tl('05',String(o.id).replace(/[^A-Za-z0-9]/g,'').slice(0,20)||'***'))+'6304';
+  const p='000201010211'+tl('26',tl('00','br.gov.bcb.pix')+tl('01',pixKey(cfg.pix)))+'52040000'+'5303986'+tl('54',(+o.total).toFixed(2))+'5802BR'+tl('59',asc(cfg.nome||'LOJA',25))+tl('60',asc(cfg.cidade||'BRASIL',15))+tl('62',tl('05',String(o.id).replace(/[^A-Za-z0-9]/g,'').slice(0,20)||'***'))+'6304';
   return p+crc(p);
 }
 function ocard(o){
   const pix=o.pay==='pix'&&!o.paid&&o.st!=='canc';
   return `<div class="row"><div class="rh"><b>${ST[o.st]||o.st}</b><b>${R(o.total)}</b></div><div class="mut">${new Date(o.t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}: ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado pela loja':'Pagamento: Pix'):'Pagamento: fiado'}</div>`
-  +(pix?(cfg.pix?`<button class="pri" data-a="pix" data-id="${o.id}">Copiar Pix copia e cola</button><div class="mut">Cole no app do seu banco, em Pix. A loja confirma quando o pagamento chegar.</div>`:'<div class="mut">A loja ainda não cadastrou a chave Pix.</div>'):'')
+  +(pix?(cfg.pix?`<div class="mut">Pague ${R(o.total)} por Pix: copie o código abaixo e cole no app do seu banco, em Pix Copia e Cola. A loja confirma quando o pagamento chegar.</div><textarea readonly rows="4" id="pc-${o.id}" onfocus="this.select()">${pixCode(o)}</textarea><button class="pri" data-a="pix" data-id="${o.id}">Copiar código Pix</button>`:'<div class="mut">A loja ainda não cadastrou a chave Pix. Fale com a loja.</div>'):'')
   +(o.st==='novo'&&cfg.wa?`<button class="sec" data-a="zap" data-id="${o.id}">Avisar a loja no WhatsApp</button>`:'')
   +(o.st==='novo'?`<button class="del" data-a="ocanc" data-id="${o.id}">Cancelar pedido</button>`:'')+`</div>`;
 }
 function render(){
+  const cs=[...new Set(prods.map(p=>p.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));if(catF&&!cs.includes(catF))catF='';
+  $('#cats').innerHTML=cs.length?['',...cs].map(c=>`<button data-a="cat" data-v="${esc(c)}" aria-pressed="${c===catF}">${c?esc(c):'Todas'}</button>`).join(''):'';
+  $('#pixnote').hidden=$('#pay').value!=='pix';
   const f=$('#busca').value.trim().toLowerCase(),ids=Object.keys(cart).filter(P),tot=ids.reduce((s,id)=>s+P(id).price*cart[id],0);
-  $('#grid').innerHTML=prods.filter(p=>p.name.toLowerCase().includes(f)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const c=cart[p.id]||0;
+  $('#grid').innerHTML=prods.filter(p=>p.name.toLowerCase().includes(f)&&(!catF||p.cat===catF)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const c=cart[p.id]||0;
     return `<div class="tile"><button class="sell" data-a="add" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="nm">${esc(p.name)}</span><span class="mut">${R(p.price)}</span><span class="st">${p.qty<=0?'Esgotado':'Disponível: '+p.qty}</span></button><div class="ft">${c?`<span class="badge">${c} no pedido</span>`:''}</div></div>`}).join('')||'<p class="mut em">Nenhum produto disponível.</p>';
   $('#cart').hidden=!ids.length;
   $('#citems').innerHTML=ids.map(id=>`<div class="ci"><span>${esc(P(id).name)}</span><span class="step"><button data-a="cm" data-id="${id}" aria-label="Tirar 1">−</button><b>${cart[id]}</b><button data-a="add" data-id="${id}" aria-label="Pôr 1">+</button></span><b>${R(P(id).price*cart[id])}</b></div>`).join('');
@@ -107,8 +127,11 @@ async function order(){
   const ids=Object.keys(cart).filter(P);if(!ids.length)return;
   const items=ids.map(id=>({p:id,n:P(id).name,q:cart[id],pr:P(id).price})),total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,pay=$('#pay').value;
   if(pay==='fia'&&(cust.balance||0)+total>(cust.limit||0)){msg('Esse pedido passa do seu limite de fiado.');return}
-  await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,t:Date.now()});
-  cart={};render();msg('Pedido enviado! Acompanhe em Meus pedidos.');
+  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,t:Date.now()});
+  cart={};render();let ok=false;
+  if(pay==='pix'&&cfg.pix){try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}}
+  msg(ok?'Pedido enviado! Código Pix copiado: cole no app do seu banco.':'Pedido enviado! Veja o pagamento em Meus pedidos.');
+  $('#olist').scrollIntoView({behavior:'smooth'});
 }
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id,o=orders.find(x=>x.id===id);
@@ -124,13 +147,15 @@ document.addEventListener('click',async e=>{
         await setDoc(doc(db,'customers',cr.user.uid),{name:nm,email:em,fiadoOk:false,limit:0,balance:0})}
     }
     else if(a==='out')await signOut(auth);
-    else if(a==='pix'&&o){await navigator.clipboard.writeText(pixCode(o));msg('Código copiado. No app do banco, escolha Pix Copia e Cola.')}
+    else if(a==='pix'&&o){try{await navigator.clipboard.writeText(pixCode(o));msg('Código copiado. No app do banco, escolha Pix Copia e Cola.')}catch(e){const t=$('#pc-'+id);if(t){t.focus();t.select();try{document.execCommand('copy')}catch(x){}}msg('Se não copiou, segure o dedo no código e toque em Copiar.')}}
+    else if(a==='cat'){catF=b.dataset.v;render()}
     else if(a==='ocanc')await updateDoc(doc(db,'orders',id),{st:'canc'});
     else if(a==='zap'&&o){const w=String(cfg.wa).replace(/\D/g,'');window.open('https://wa.me/'+(w.length<=11?'55':'')+w+'?text='+encodeURIComponent('Fiz um pedido no app: '+(o.items||[]).map(i=>i.q+'x '+i.n).join(', ')+'. Total '+R(o.total)+'. Nome: '+o.name),'_blank')}
     else if(a==='inst'){if(ip)ip.prompt();b.hidden=true}
   }catch(er){erro(er)}
 });
 document.addEventListener('input',e=>{if(e.target.id==='busca')render()});
+document.addEventListener('change',e=>{if(e.target.id==='pay')render()});
 onAuthStateChanged(auth,u=>{
   unsubs.forEach(f=>f());unsubs=[];me=u;cust={};orders=[];cart={};
   $('#auth').hidden=!!u;$('#app').hidden=!u;$('#who').textContent=u?(u.displayName||u.email):'';
