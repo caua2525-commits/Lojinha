@@ -83,6 +83,12 @@ nav button[aria-current="page"]{color:var(--br);background:var(--bg)}
 #vid{flex:1;width:100%;min-height:0;object-fit:cover}
 .sb{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));background:var(--card)}
 #msg:not(:empty){position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.top{display:flex;gap:8px;align-items:center}
+.pimg{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;background:var(--bg)}
+.ph{width:56px;height:56px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--mut);flex:none}
+.foto{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.foto .pimg{width:56px;height:56px}
+label.fbtn{flex-direction:row;justify-content:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -231,9 +237,9 @@ function render(){
   const f=$('#busca').value.trim().toLowerCase(),L=S.products.filter(p=>p.name.toLowerCase().includes(f)&&(!catF||p.cat===catF)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),T=sum(agg([today()]).m);
   $('#tot').innerHTML=`<span>Vendido hoje</span><b>${R(T.r)}</b><span>${T.q} ${T.q==1?'item':'itens'}${priv()&&T.c>0?`, lucro estimado ${R(T.r-T.c)}`:''}</span>`;
   $('#grid').innerHTML=L.map(p=>{const c=cart[p.id]||0;
-    return `<div class="tile"><button class="sell" data-a="cp" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="nm">${esc(p.name)}</span><span class="mut">${R(p.price)}</span><span class="st${p.qty<=mn(p)?' low':''}">${p.qty<=0?'Esgotado':p.qty+' em estoque'}</span></button><div class="ft">${c?`<span class="badge">${c} no carrinho</span>`:'<span class="mut">Toque para adicionar</span>'}</div></div>`}).join('')
+    return `<div class="tile"><button class="sell" data-a="cp" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="top">${p.img?`<img class="pimg" src="${p.img}" alt="">`:''}<span class="nm">${esc(p.name)}</span></span><span class="mut">${R(p.price)}</span><span class="st${p.qty<=mn(p)?' low':''}">${p.qty<=0?'Esgotado':p.qty+' em estoque'}</span></button><div class="ft">${c?`<span class="badge">${c} no carrinho</span>`:'<span class="mut">Toque para adicionar</span>'}</div></div>`}).join('')
     ||`<p class="mut em">${S.products.length?'Nenhum produto encontrado.':'Cadastre seus produtos na aba Estoque para começar a vender.'}</p>`;
-  $('#lista').innerHTML=L.map(p=>`<div class="row"><div class="rh"><input class="nmi" value="${esc(p.name)}" data-f="name" data-id="${p.id}" aria-label="Nome"><button class="del" data-a="del" data-id="${p.id}">${armed===p.id?'Confirmar exclusão':'Excluir'}</button></div><div class="ctl"><label>Estoque<span class="step"><button data-a="dec" data-id="${p.id}" aria-label="Tirar 1">−</button><input type="number" inputmode="numeric" min="0" value="${p.qty}" data-f="qty" data-id="${p.id}"><button data-a="inc" data-id="${p.id}" aria-label="Repor 1">+</button></span></label><label>Avisar com até<input type="number" inputmode="numeric" min="0" value="${mn(p)}" data-f="min" data-id="${p.id}"></label><label>Preço de venda (R$)<input inputmode="decimal" value="${String(p.price).replace('.',',')}" data-f="price" data-id="${p.id}"></label>${priv()?`<label>Custo (R$)<input inputmode="decimal" value="${String(p.cost||0).replace('.',',')}" data-f="cost" data-id="${p.id}"></label>`:''}<label>Categoria<input list="catl" value="${esc(p.cat||'')}" data-f="cat" data-id="${p.id}"></label><label>Código de barras<input inputmode="numeric" value="${esc(p.bar||'')}" data-f="bar" data-id="${p.id}"></label><label>Validade<input type="date" value="${p.exp||''}" data-f="exp" data-id="${p.id}"></label></div></div>`).join('')
+  $('#lista').innerHTML=L.map(p=>`<div class="row"><div class="rh"><input class="nmi" value="${esc(p.name)}" data-f="name" data-id="${p.id}" aria-label="Nome"><button class="del" data-a="del" data-id="${p.id}">${armed===p.id?'Confirmar exclusão':'Excluir'}</button></div><div class="foto">${p.img?`<img class="pimg" src="${p.img}" alt="">`:`<span class="ph">${esc(p.name.slice(0,1).toUpperCase())}</span>`}<label class="fbtn">${p.img?'Trocar foto':'Adicionar foto'}<input type="file" accept="image/*" data-img="${p.id}" hidden></label>${p.img?`<button class="del" data-a="rmimg" data-id="${p.id}">Remover</button>`:''}</div><div class="ctl"><label>Estoque<span class="step"><button data-a="dec" data-id="${p.id}" aria-label="Tirar 1">−</button><input type="number" inputmode="numeric" min="0" value="${p.qty}" data-f="qty" data-id="${p.id}"><button data-a="inc" data-id="${p.id}" aria-label="Repor 1">+</button></span></label><label>Avisar com até<input type="number" inputmode="numeric" min="0" value="${mn(p)}" data-f="min" data-id="${p.id}"></label><label>Preço de venda (R$)<input inputmode="decimal" value="${String(p.price).replace('.',',')}" data-f="price" data-id="${p.id}"></label>${priv()?`<label>Custo (R$)<input inputmode="decimal" value="${String(p.cost||0).replace('.',',')}" data-f="cost" data-id="${p.id}"></label>`:''}<label>Categoria<input list="catl" value="${esc(p.cat||'')}" data-f="cat" data-id="${p.id}"></label><label>Código de barras<input inputmode="numeric" value="${esc(p.bar||'')}" data-f="bar" data-id="${p.id}"></label><label>Validade<input type="date" value="${p.exp||''}" data-f="exp" data-id="${p.id}"></label></div></div>`).join('')
     ||`<p class="mut">${S.products.length?'Nenhum produto encontrado.':'Nenhum produto ainda.'}</p>`;
   renderCart();renderRes();renderFia();ui();if(window.renderPed)renderPed();
 }
@@ -272,6 +278,14 @@ async function scanStart(mode){
   }catch(e){msg('Não consegui abrir a câmera. Confira a permissão.');scanStop()}
 }
 function scanStop(){clearInterval(scanT);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;$('#scanbox').hidden=true}
+function setImg(id,file){
+  const p=P(id);if(!p)return;const im=new Image(),u=URL.createObjectURL(file);
+  im.onload=()=>{const c=document.createElement('canvas'),n=240,x=c.getContext('2d'),s=Math.min(im.width,im.height);
+    c.width=c.height=n;x.fillStyle='#fff';x.fillRect(0,0,n,n);
+    x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,n,n);
+    p.img=c.toDataURL('image/jpeg',.72);URL.revokeObjectURL(u);save();render();msg('Foto salva.')};
+  im.onerror=()=>msg('Não consegui ler essa imagem.');im.src=u;
+}
 function tab(v){
   armed=null;
   ['vender','estoque','resumo','fiado','ped'].forEach(k=>{$('#v-'+k).hidden=k!==v;$('#n-'+k).setAttribute('aria-current',k===v?'page':'false')});
@@ -303,6 +317,7 @@ document.addEventListener('click',e=>{
   else if(a==='del'){if(armed===id){S.products=S.products.filter(x=>x.id!==id);delete cart[id];armed=null;save()}else armed=id;render()}
   else if(a==='add')add();
   else if(a==='tab')tab(v);
+  else if(a==='rmimg'&&p){delete p.img;save();render();msg('Foto removida.')}
   else if(a==='cat'){catF=v;render()}
   else if(a==='scan')scanStart(v);
   else if(a==='scanx')scanStop();
@@ -324,6 +339,7 @@ document.addEventListener('click',e=>{
   else if(a==='inst'){if(ip)ip.prompt();b.hidden=true}
 });
 document.addEventListener('input',e=>{if(e.target.id==='busca')render();else if(e.target.id==='rec')troco()});
+document.addEventListener('change',e=>{const id=e.target.dataset.img;if(id&&e.target.files[0]){setImg(id,e.target.files[0]);e.target.value=''}});
 document.addEventListener('change',e=>{
   const t=e.target,f=t.dataset.f,p=P(t.dataset.id);
   if(f&&p){
@@ -387,7 +403,7 @@ window.cloudSync=()=>{
   timer=setTimeout(async()=>{
     try{
       const ids=new Set(S.products.map(p=>p.id));
-      for(const p of S.products){const d={name:p.name,price:p.price,qty:p.qty,cat:p.cat||''},j=JSON.stringify(d);
+      for(const p of S.products){const d={name:p.name,price:p.price,qty:p.qty,cat:p.cat||'',img:p.img||''},j=JSON.stringify(d);
         if(pub[p.id]!==j){await setDoc(doc(db,'products',p.id),d);pub[p.id]=j}}
       for(const id in pub)if(!ids.has(id)){await deleteDoc(doc(db,'products',id));delete pub[id]}
       for(const id in cust){const b=bal(id);if(cust[id].balance!==b){await updateDoc(doc(db,'customers',id),{balance:b});cust[id].balance=b}}

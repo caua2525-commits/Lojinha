@@ -48,6 +48,9 @@ label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)
 .chips button{background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-weight:600}
 .chips button[aria-pressed="true"]{background:var(--br);color:var(--bri);border-color:var(--br)}
 textarea{width:100%;font:12px/1.3 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;resize:none}
+.timg{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--bg)}
+.ph{display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;color:var(--mut)}
+.tile:has(.sell:disabled) .timg{opacity:.45}
 </style>
 </head>
 <body>
@@ -115,7 +118,7 @@ function render(){
   $('#pixnote').hidden=$('#pay').value!=='pix';
   const f=$('#busca').value.trim().toLowerCase(),ids=Object.keys(cart).filter(P),tot=ids.reduce((s,id)=>s+P(id).price*cart[id],0);
   $('#grid').innerHTML=prods.filter(p=>p.name.toLowerCase().includes(f)&&(!catF||p.cat===catF)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const c=cart[p.id]||0;
-    return `<div class="tile"><button class="sell" data-a="add" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="nm">${esc(p.name)}</span><span class="mut">${R(p.price)}</span><span class="st">${p.qty<=0?'Esgotado':'Disponível: '+p.qty}</span></button><div class="ft">${c?`<span class="badge">${c} no pedido</span>`:''}</div></div>`}).join('')||'<p class="mut em">Nenhum produto disponível.</p>';
+    return `<div class="tile">${p.img?`<img class="timg" src="${p.img}" alt="${esc(p.name)}">`:`<div class="timg ph">${esc(p.name.slice(0,1).toUpperCase())}</div>`}<button class="sell" data-a="add" data-id="${p.id}" ${p.qty<=0?'disabled':''}><span class="nm">${esc(p.name)}</span><span class="mut">${R(p.price)}</span><span class="st">${p.qty<=0?'Esgotado':'Disponível: '+p.qty}</span></button><div class="ft">${c?`<span class="badge">${c} no pedido</span>`:''}</div></div>`}).join('')||'<p class="mut em">Nenhum produto disponível.</p>';
   $('#cart').hidden=!ids.length;
   $('#citems').innerHTML=ids.map(id=>`<div class="ci"><span>${esc(P(id).name)}</span><span class="step"><button data-a="cm" data-id="${id}" aria-label="Tirar 1">−</button><b>${cart[id]}</b><button data-a="add" data-id="${id}" aria-label="Pôr 1">+</button></span><b>${R(P(id).price*cart[id])}</b></div>`).join('');
   $('#ctot').textContent=R(tot);
