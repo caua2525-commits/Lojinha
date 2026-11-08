@@ -87,6 +87,32 @@ textarea{width:100%;font:12px/1.3 ui-monospace,Menlo,monospace;background:var(--
 footer{text-align:center;padding-top:28px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .closed{background:var(--soft);border-style:dashed;font-weight:700}
+header,main{max-width:960px;padding-left:12px;padding-right:12px}
+header{padding-top:14px}
+h1{font-size:28px}.sub{font-size:13px;margin-top:4px}
+#tabs{margin:10px 0 8px}#tabs button{padding:9px 6px;font-size:13px}
+.search input{padding-top:9px;padding-bottom:9px}
+.srow{display:flex;gap:8px;align-items:center}.srow .search{flex:1}
+.vt{display:flex;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.vt button{background:none;border:0;padding:0 10px;height:42px;color:var(--ink);display:flex;align-items:center}
+.vt svg{width:20px;height:20px}
+.vt button[aria-pressed="true"]{background:var(--btn);color:var(--btni)}
+.chips{padding:8px 0 4px}.chips button{padding:5px 14px;font-size:14px}
+.grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:4px}
+.tile{border-radius:12px}
+.info{padding:6px 8px 0;gap:2px}
+.nm{font-size:13px}
+.rs{font-size:10px;margin-top:3px}.pi{font-size:23px}.pc{font-size:11px;margin-top:3px}
+.st{font-size:11px}
+.act{padding:5px 8px 8px}
+.addb{padding:8px 4px;font-size:13px}
+.stp button{width:30px;height:30px;font-size:18px}.stp b{font-size:15px}
+.ph{font-size:34px}.sk{height:150px}
+.grid.list{grid-template-columns:1fr}
+.grid.list .tile{flex-direction:row;align-items:center}
+.grid.list .timg{width:72px;height:72px;flex:none;aspect-ratio:auto;border-bottom:0;border-right:2px solid var(--line)}
+.grid.list .info{flex:1;padding:8px 10px;min-width:0}
+.grid.list .act{width:116px;flex:none;padding:8px 10px 8px 0}
 </style>
 </head>
 <body>
@@ -106,14 +132,14 @@ footer{text-align:center;padding-top:28px}
 <nav id="tabs"><button data-a="t" data-v="loja" aria-pressed="true">Loja</button><button data-a="t" data-v="ped" aria-pressed="false">Meus pedidos<i id="pn" hidden></i></button><button data-a="t" data-v="fia" aria-pressed="false">Fiado</button></nav>
 <div id="sec-loja">
 <div class="card closed" id="closed" hidden></div>
-<div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="busca" type="search" placeholder="Buscar produto" autocomplete="off"></div>
+<div class="srow"><div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="busca" type="search" placeholder="Buscar produto" autocomplete="off"></div><div class="vt"><button data-a="view" data-v="grade" aria-label="Ver em grade" aria-pressed="true"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button><button data-a="view" data-v="lista" aria-label="Ver em lista" aria-pressed="false"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="4" rx="1.5"/><rect x="3" y="10" width="18" height="4" rx="1.5"/><rect x="3" y="16" width="18" height="4" rx="1.5"/></svg></button></div></div>
 <div class="chips" id="cats"></div>
 <div class="grid" id="grid"></div>
 </div>
 <div id="sec-ped" hidden><div id="olist"></div></div>
 <div id="sec-fia" hidden><div id="fiado"></div></div>
 </section>
-<footer class="mut">Versão do app: 10</footer>
+<footer class="mut">Versão do app: 11</footer>
 </main>
 <div id="scrim" data-a="sheet" hidden></div>
 <div id="cart" role="dialog" aria-label="Seu pedido"><div class="sh"><span>Seu pedido</span><button class="x" data-a="sheet" aria-label="Fechar">×</button></div><div id="citems"></div>
@@ -130,7 +156,7 @@ const auth=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s);
 const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar',ent:'Entregue',canc:'Cancelado'};
-let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],healing=false,ip=null,catF='',sheet=false,tab='loja',loaded=false;
+let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],healing=false,ip=null,catF='',sheet=false,tab='loja',loaded=false,view=(()=>{try{return localStorage.getItem('lv')||'grade'}catch(e){return 'grade'}})();
 const P=id=>prods.find(p=>p.id===id);
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
@@ -165,13 +191,14 @@ function ocard(o){
 }
 function render(){
   const open=aberta(cfg);
+  $('#grid').classList.toggle('list',view==='lista');document.querySelectorAll('.vt button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===view));
   const cs=[...new Set(prods.map(p=>p.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));if(catF&&!cs.includes(catF))catF='';
   $('#cats').innerHTML=cs.length?['',...cs].map(c=>`<button data-a="cat" data-v="${esc(c)}" aria-pressed="${c===catF}">${c?esc(c):'Todas'}</button>`).join(''):'';
   $('#pixnote').hidden=$('#pay').value!=='pix';
   const cl=$('#closed');cl.hidden=open;if(!open)cl.textContent=cfg.open===false?'A loja não está recebendo pedidos agora. Volte mais tarde.':'Estamos fechados agora. Abrimos às '+(cfg.from||'07:00')+'.';
   const f=$('#busca').value.trim().toLowerCase(),ids=Object.keys(cart).filter(P),tot=ids.reduce((s,id)=>s+P(id).price*cart[id],0);
   $('#grid').innerHTML=!loaded?'<div class="sk"></div>'.repeat(4):(prods.filter(p=>p.name.toLowerCase().includes(f)&&(!catF||p.cat===catF)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const c=cart[p.id]||0;
-    return `<div class="tile${p.qty<=0?' out':''}">${p.img?`<img class="timg" src="${p.img}" alt="${esc(p.name)}">`:`<div class="timg ph">${esc(p.name.slice(0,1).toUpperCase())}</div>`}<div class="info"><span class="nm">${esc(p.name)}</span>${PR(p.price)}<span class="st${p.qty<=3?' low':''}">${p.qty<=0?'Esgotado':p.qty<=3?'Últimas '+p.qty:'Disponível'}</span></div><div class="act">${!open?'<button class="addb" disabled>Fechado agora</button>':p.qty<=0?'<button class="addb" disabled>Esgotado</button>':c?`<div class="stp"><button data-a="cm" data-id="${p.id}" aria-label="Tirar 1">−</button><b>${c}</b><button data-a="add" data-id="${p.id}" aria-label="Pôr 1">+</button></div>`:`<button class="addb" data-a="add" data-id="${p.id}">Adicionar</button>`}</div></div>`}).join('')||`<p class="mut em">${prods.length?'Nenhum produto encontrado. Tente outro nome ou categoria.':'A loja ainda não publicou produtos. Volte daqui a pouco.'}</p>`);
+    return `<div class="tile${p.qty<=0?' out':''}">${p.img?`<img class="timg" src="${p.img}" alt="${esc(p.name)}">`:`<div class="timg ph">${esc(p.name.slice(0,1).toUpperCase())}</div>`}<div class="info"><span class="nm">${esc(p.name)}</span>${PR(p.price)}${p.qty<=3?`<span class="st low">${p.qty<=0?'Esgotado':'Últimas '+p.qty}</span>`:''}</div><div class="act">${!open?'<button class="addb" disabled>Fechado agora</button>':p.qty<=0?'<button class="addb" disabled>Esgotado</button>':c?`<div class="stp"><button data-a="cm" data-id="${p.id}" aria-label="Tirar 1">−</button><b>${c}</b><button data-a="add" data-id="${p.id}" aria-label="Pôr 1">+</button></div>`:`<button class="addb" data-a="add" data-id="${p.id}">Adicionar</button>`}</div></div>`}).join('')||`<p class="mut em">${prods.length?'Nenhum produto encontrado. Tente outro nome ou categoria.':'A loja ainda não publicou produtos. Volte daqui a pouco.'}</p>`);
   if(!ids.length||!open)sheet=false;
   $('#cart').classList.toggle('open',sheet);$('#scrim').hidden=!sheet;
   const nq=ids.reduce((s,id)=>s+cart[id],0);$('#bar').hidden=!ids.length||sheet||!open;$('#bn').textContent=nq+(nq==1?' item':' itens');$('#bt').textContent=R(tot);
@@ -212,6 +239,7 @@ document.addEventListener('click',async e=>{
     else if(a==='pix'&&o){try{await navigator.clipboard.writeText(pixCode(o));msg('Código copiado. No app do banco, escolha Pix Copia e Cola.')}catch(e){const t=$('#pc-'+id);if(t){t.focus();t.select();try{document.execCommand('copy')}catch(x){}}msg('Se não copiou, segure o dedo no código e toque em Copiar.')}}
     else if(a==='cat'){catF=b.dataset.v;render()}
     else if(a==='sheet'){sheet=!sheet;render()}
+    else if(a==='view'){view=b.dataset.v;try{localStorage.setItem('lv',view)}catch(e){}render()}
     else if(a==='t'){tab=b.dataset.v;render();scrollTo(0,0)}
     else if(a==='ocanc')await updateDoc(doc(db,'orders',id),{st:'canc'});
     else if(a==='zap'&&o){const w=String(cfg.wa).replace(/\D/g,'');window.open('https://wa.me/'+(w.length<=11?'55':'')+w+'?text='+encodeURIComponent('Fiz um pedido no app: '+(o.items||[]).map(i=>i.q+'x '+i.n).join(', ')+'. Total '+R(o.total)+'. Nome: '+o.name),'_blank')}
