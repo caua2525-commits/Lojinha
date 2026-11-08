@@ -113,7 +113,7 @@ footer{text-align:center;padding-top:28px}
 <div id="sec-ped" hidden><div id="olist"></div></div>
 <div id="sec-fia" hidden><div id="fiado"></div></div>
 </section>
-<footer class="mut">Versão do app: 9</footer>
+<footer class="mut">Versão do app: 10</footer>
 </main>
 <div id="scrim" data-a="sheet" hidden></div>
 <div id="cart" role="dialog" aria-label="Seu pedido"><div class="sh"><span>Seu pedido</span><button class="x" data-a="sheet" aria-label="Fechar">×</button></div><div id="citems"></div>
@@ -130,7 +130,7 @@ const auth=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s);
 const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar',ent:'Entregue',canc:'Cancelado'};
-let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],ip=null,catF='',sheet=false,tab='loja',loaded=false;
+let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],healing=false,ip=null,catF='',sheet=false,tab='loja',loaded=false;
 const P=id=>prods.find(p=>p.id===id);
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
@@ -221,12 +221,14 @@ document.addEventListener('click',async e=>{
 document.addEventListener('input',e=>{if(e.target.id==='busca')render()});
 document.addEventListener('change',e=>{if(e.target.id==='pay')render()});
 onAuthStateChanged(auth,u=>{
-  unsubs.forEach(f=>f());unsubs=[];me=u;cust={};orders=[];cart={};loaded=false;sheet=false;tab='loja';
+  unsubs.forEach(f=>f());unsubs=[];healing=false;me=u;cust={};orders=[];cart={};loaded=false;sheet=false;tab='loja';
   $('#auth').hidden=!!u;$('#app').hidden=!u;$('#outb').hidden=!u;$('#who').textContent=u?'Olá, '+String(u.displayName||u.email).split(/[ @]/)[0]:'';
   if(!u){render();return}
   unsubs=[
     onSnapshot(collection(db,'products'),s=>{loaded=true;prods=s.docs.map(d=>({id:d.id,...d.data()}));render()},erro),
-    onSnapshot(doc(db,'customers',u.uid),s=>{cust=s.data()||{};render()},erro),
+    onSnapshot(doc(db,'customers',u.uid),s=>{cust=s.data()||{};
+      if(!s.exists()&&!s.metadata.fromCache&&!healing){healing=true;setDoc(doc(db,'customers',u.uid),{name:u.displayName||String(u.email).split('@')[0],email:u.email,fiadoOk:false,limit:0,balance:0}).catch(()=>{healing=false})}
+      render()},erro),
     onSnapshot(doc(db,'config','loja'),s=>{cfg=s.data()||{};$('#ttl').textContent=document.title=cfg.loja||'Loja Andrea';render()},erro),
     onSnapshot(query(collection(db,'orders'),where('uid','==',u.uid)),s=>{orders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.t-a.t);render()},erro)
   ];

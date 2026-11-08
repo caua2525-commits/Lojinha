@@ -129,7 +129,7 @@ input[type=checkbox]{width:22px;height:22px;flex:none;padding:0}
 <input id="oe" type="email" placeholder="E-mail do dono" autocomplete="email"><input id="op" type="password" placeholder="Senha" autocomplete="current-password">
 <div class="two"><button class="pri" data-a="olog">Entrar</button><button class="sec" data-a="oreg">Criar conta</button></div></div>
 <div id="ologged" hidden>
-<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 9</div>
+<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 10</div>
 <div class="mut" id="oshop"></div>
 <label class="chk"><input type="checkbox" id="oopen"> Aceitar pedidos agora</label>
 <label class="chk"><input type="checkbox" id="oauto"> Abrir e fechar sozinho nos horários abaixo</label>
@@ -393,7 +393,7 @@ import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOu
 import {getFirestore,collection,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
 const auth=getAuth(app),db=getFirestore(app);
-let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={};
+let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={},cerr='';
 const ST={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
 const hm=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;return (g('hour')%24)*60+g('minute')};
@@ -414,7 +414,7 @@ window.renderPed=()=>{
     return x.join('')};
   const card=o=>`<div class="row"><div class="rh"><b class="nmi">${esc(o.name)}</b><b>${R(o.total)}</b></div><div class="mut">${hh(o.t)}, ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):'Fiado'}, ${ST[o.st]||o.st}</div><div class="two">${bs(o)}</div></div>`;
   $('#plist').innerHTML=(ac.concat(ol).map(card).join(''))||'<p class="mut">Nenhum pedido ainda.</p>';
-  $('#clist').innerHTML=Object.entries(cust).map(([id,c])=>`<div class="row"><div class="rh"><b class="nmi">${esc(c.name)}</b><b>${R(bal(id))}</b></div><div class="mut">${esc(c.email||'')}</div><div class="two"><input id="l-${id}" inputmode="decimal" placeholder="Limite (R$)" value="${c.limit||''}">${btn('olim','','Salvar limite','sec',id)}</div>${btn('ofia','',c.fiadoOk?'Bloquear fiado':'Liberar fiado',c.fiadoOk?'sec':'pri',id)}</div>`).join('')||'<p class="mut">Nenhum cliente cadastrado ainda.</p>';
+  $('#clist').innerHTML=Object.entries(cust).map(([id,c])=>`<div class="row"><div class="rh"><b class="nmi">${esc(c.name)}</b><b>${R(bal(id))}</b></div><div class="mut">${esc(c.email||'')}</div><div class="two"><input id="l-${id}" inputmode="decimal" placeholder="Limite (R$)" value="${c.limit||''}">${btn('olim','','Salvar limite','sec',id)}</div>${btn('ofia','',c.fiadoOk?'Bloquear fiado':'Liberar fiado',c.fiadoOk?'sec':'pri',id)}</div>`).join('')||(cerr?'<p class="mut">Não consegui carregar os clientes: '+cerr+'.</p>':'<p class="mut">Nenhum cliente apareceu ainda. Quem criou a conta antes das últimas atualizações aparece depois de abrir o app da loja uma vez.</p>');
 };
 window.cloudSync=()=>{
   if(!me||!pub)return;clearTimeout(timer);
@@ -483,9 +483,9 @@ onAuthStateChanged(auth,async u=>{
       onSnapshot(collection(db,'orders'),s=>{const l=s.docs.map(d=>({id:d.id,...d.data()}));
         if(seen)l.filter(o=>!seen.has(o.id)&&o.st==='novo').forEach(o=>{msg('Novo pedido de '+o.name+': '+R(o.total));if(navigator.vibrate)navigator.vibrate([200,100,200])});
         seen=new Set(l.map(o=>o.id));orders=l;render()},erro),
-      onSnapshot(collection(db,'customers'),s=>{cust={};s.forEach(d=>cust[d.id]=d.data());let ch=0;
+      onSnapshot(collection(db,'customers'),s=>{cerr='';cust={};s.forEach(d=>cust[d.id]=d.data());let ch=0;
         for(const id in cust){const c=S.clients.find(x=>x.id===id);if(!c){S.clients.push({id,name:cust[id].name});ch=1}else if(c.name!==cust[id].name){c.name=cust[id].name;ch=1}}
-        if(ch)save();render()},erro)
+        if(ch)save();render()},er=>{cerr=er.code==='permission-denied'?'sem permissão. Confira o e-mail do dono nas regras do Firestore':(er.code||er.message);erro(er);render()})
     ];
     cloudSync();
   }catch(e){erro(e)}
