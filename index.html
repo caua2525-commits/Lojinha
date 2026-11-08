@@ -127,7 +127,7 @@ details{margin-top:8px}summary{cursor:pointer}.pl span{padding-right:8px}
 <input id="oe" type="email" placeholder="E-mail do dono" autocomplete="email"><input id="op" type="password" placeholder="Senha" autocomplete="current-password">
 <div class="two"><button class="pri" data-a="olog">Entrar</button><button class="sec" data-a="oreg">Criar conta</button></div></div>
 <div id="ologged" hidden>
-<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div>
+<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 7</div>
 <label>Chave Pix<input id="px" autocomplete="off"></label>
 <div class="two"><label>Nome no Pix<input id="pn" autocomplete="off"></label><label>Cidade<input id="pc" autocomplete="off"></label></div>
 <label>WhatsApp da loja (com DDD)<input id="pw" inputmode="numeric" autocomplete="off"></label>
@@ -384,14 +384,14 @@ render();
 <script type="module" onerror="msg('Não consegui carregar o Firebase. Confira a internet e tente de novo.')">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,collection,doc,setDoc,getDocs,deleteDoc,updateDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,collection,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
 const auth=getAuth(app),db=getFirestore(app);
-let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null;
+let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={};
 const ST={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
 const btn=(a,v,t,c,id)=>`<button class="${c}" data-a="${a}" data-id="${id}"${v?` data-v="${v}"`:''}>${t}</button>`;
-function ui2(){$('#oauth').hidden=!!me;$('#ologged').hidden=!me;$('#owho').textContent=me?'Conectado como '+me.email:''}
+function ui2(){$('#oauth').hidden=!!me;$('#ologged').hidden=!me;$('#owho').textContent=me?'Conectado como '+me.email:'';$('#ostat').textContent=me?'O que os clientes veem agora. Pix: '+(ocfg.pix?'cadastrado':'FALTA cadastrar')+'. Avisos de pedido no celular: '+(ocfg.ntfy?'código salvo':'FALTA gerar o código')+'.':''}
 window.renderPed=()=>{
   const ac=orders.filter(o=>['novo','sep','pronto'].includes(o.st)).sort((a,b)=>a.t-b.t),
     ol=orders.filter(o=>o.st==='ent'||o.st==='canc').sort((a,b)=>b.t-a.t).slice(0,8),nw=ac.filter(o=>o.st==='novo').length;
@@ -419,6 +419,11 @@ window.cloudSync=()=>{
     }catch(e){erro(e)}
   },1200);
 };
+async function saveCfg(){
+  S.cfg.pix=$('#px').value.trim();S.cfg.pnome=$('#pn').value.trim();S.cfg.pcid=$('#pc').value.trim();S.cfg.wa=$('#pw').value.replace(/\D/g,'');S.cfg.ntfy=$('#nt').value.trim();save();
+  const d={pix:S.cfg.pix,nome:S.cfg.pnome,cidade:S.cfg.pcid,wa:S.cfg.wa,ntfy:S.cfg.ntfy||'',loja:S.cfg.name||''};
+  await setDoc(doc(db,'config','loja'),d);ocfg=d;ui2();
+}
 async function trans(o,v){
   const its=o.items||[];
   if(v==='sep'){
@@ -446,10 +451,10 @@ document.addEventListener('click',async e=>{
       if(!em||!pw){msg('Informe e-mail e senha.');return}
       await (a==='olog'?signInWithEmailAndPassword:createUserWithEmailAndPassword)(auth,em,pw)}
     else if(a==='oout')await signOut(auth);
-    else if(a==='osave'){S.cfg.pix=$('#px').value.trim();S.cfg.pnome=$('#pn').value.trim();S.cfg.pcid=$('#pc').value.trim();S.cfg.wa=$('#pw').value.replace(/\D/g,'');S.cfg.ntfy=$('#nt').value.trim();save();
-      await setDoc(doc(db,'config','loja'),{pix:S.cfg.pix,nome:S.cfg.pnome,cidade:S.cfg.pcid,wa:S.cfg.wa,ntfy:S.cfg.ntfy||'',loja:S.cfg.name||''});msg('Dados da loja online salvos.')}
-    else if(a==='ontgen'){const r=crypto.getRandomValues(new Uint8Array(10));$('#nt').value='lojinha-'+[...r].map(x=>x.toString(36).padStart(2,'0')).join('');msg('Código gerado. Toque em Salvar dados e depois em Enviar teste.')}
+    else if(a==='osave'){await saveCfg();msg('Dados da loja online salvos.')}
+    else if(a==='ontgen'){const r=crypto.getRandomValues(new Uint8Array(10));$('#nt').value='lojinha-'+[...r].map(x=>x.toString(36).padStart(2,'0')).join('');await saveCfg();msg('Código gerado e salvo. Inscreva o mesmo código no app ntfy e toque em Enviar teste.')}
     else if(a==='onttest'){const t=$('#nt').value.trim();if(!t){msg('Gere ou digite o código primeiro.');return}
+      await saveCfg();
       await fetch('https://ntfy.sh/'+encodeURIComponent(t)+'/publish?title='+encodeURIComponent('Teste da loja')+'&tags=white_check_mark&message='+encodeURIComponent('Se você recebeu isto, os avisos de pedido estão funcionando.'),{mode:'no-cors'});msg('Teste enviado. Veja se chegou no app ntfy.')}
     else if(a==='oshare')send('Peça pelo app da loja: '+location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'loja.html');
     else if(a==='opix'&&o){await updateDoc(doc(db,'orders',id),{paid:true});msg('Pix marcado como recebido.')}
@@ -463,6 +468,7 @@ onAuthStateChanged(auth,async u=>{
   if(!u){orders=[];cust={};render();return}
   try{
     const ps=await getDocs(collection(db,'products')),pb={};ps.forEach(d=>pb[d.id]=JSON.stringify(d.data()));pub=pb;
+    try{const c=await getDoc(doc(db,'config','loja'));ocfg=c.exists()?c.data():{};ui2()}catch(e){}
     unsubs=[
       onSnapshot(collection(db,'orders'),s=>{const l=s.docs.map(d=>({id:d.id,...d.data()}));
         if(seen)l.filter(o=>!seen.has(o.id)&&o.st==='novo').forEach(o=>{msg('Novo pedido de '+o.name+': '+R(o.total));if(navigator.vibrate)navigator.vibrate([200,100,200])});
