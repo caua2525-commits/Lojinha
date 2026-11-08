@@ -90,6 +90,8 @@ nav button[aria-current="page"]{color:var(--br);background:var(--bg)}
 .foto .pimg{width:56px;height:56px}
 label.fbtn{flex-direction:row;justify-content:center;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer}
 details{margin-top:8px}summary{cursor:pointer}.pl span{padding-right:8px}
+label.chk{flex-direction:row;align-items:center;gap:10px;font-size:15px;color:var(--ink)}
+input[type=checkbox]{width:22px;height:22px;flex:none;padding:0}
 </style>
 </head>
 <body>
@@ -127,7 +129,11 @@ details{margin-top:8px}summary{cursor:pointer}.pl span{padding-right:8px}
 <input id="oe" type="email" placeholder="E-mail do dono" autocomplete="email"><input id="op" type="password" placeholder="Senha" autocomplete="current-password">
 <div class="two"><button class="pri" data-a="olog">Entrar</button><button class="sec" data-a="oreg">Criar conta</button></div></div>
 <div id="ologged" hidden>
-<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 7</div>
+<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 9</div>
+<div class="mut" id="oshop"></div>
+<label class="chk"><input type="checkbox" id="oopen"> Aceitar pedidos agora</label>
+<label class="chk"><input type="checkbox" id="oauto"> Abrir e fechar sozinho nos horários abaixo</label>
+<div class="two"><label>Abre às<input id="ofrom" type="time"></label><label>Fecha às<input id="oto" type="time"></label></div>
 <label>Chave Pix<input id="px" autocomplete="off"></label>
 <div class="two"><label>Nome no Pix<input id="pn" autocomplete="off"></label><label>Cidade<input id="pc" autocomplete="off"></label></div>
 <label>WhatsApp da loja (com DDD)<input id="pw" inputmode="numeric" autocomplete="off"></label>
@@ -390,8 +396,11 @@ const auth=getAuth(app),db=getFirestore(app);
 let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={};
 const ST={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
+const hm=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;return (g('hour')%24)*60+g('minute')};
+const mins=s=>{const [h,m]=String(s||'0:0').split(':');return +h*60+(+m||0)};
+const aberta=c=>{if(c.open===false)return false;if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
 const btn=(a,v,t,c,id)=>`<button class="${c}" data-a="${a}" data-id="${id}"${v?` data-v="${v}"`:''}>${t}</button>`;
-function ui2(){$('#oauth').hidden=!!me;$('#ologged').hidden=!me;$('#owho').textContent=me?'Conectado como '+me.email:'';$('#ostat').textContent=me?'O que os clientes veem agora. Pix: '+(ocfg.pix?'cadastrado':'FALTA cadastrar')+'. Avisos de pedido no celular: '+(ocfg.ntfy?'código salvo':'FALTA gerar o código')+'.':''}
+function ui2(){$('#oauth').hidden=!!me;$('#ologged').hidden=!me;$('#owho').textContent=me?'Conectado como '+me.email:'';$('#ostat').textContent=me?'O que os clientes veem agora. Pix: '+(ocfg.pix?'cadastrado':'FALTA cadastrar')+'. Avisos de pedido no celular: '+(ocfg.ntfy?'código salvo':'FALTA gerar o código')+'.':'';$('#oshop').textContent=me?'Para os clientes a loja está '+(aberta(ocfg)?'aberta':'fechada')+' agora.':''}
 window.renderPed=()=>{
   const ac=orders.filter(o=>['novo','sep','pronto'].includes(o.st)).sort((a,b)=>a.t-b.t),
     ol=orders.filter(o=>o.st==='ent'||o.st==='canc').sort((a,b)=>b.t-a.t).slice(0,8),nw=ac.filter(o=>o.st==='novo').length;
@@ -420,8 +429,8 @@ window.cloudSync=()=>{
   },1200);
 };
 async function saveCfg(){
-  S.cfg.pix=$('#px').value.trim();S.cfg.pnome=$('#pn').value.trim();S.cfg.pcid=$('#pc').value.trim();S.cfg.wa=$('#pw').value.replace(/\D/g,'');S.cfg.ntfy=$('#nt').value.trim();save();
-  const d={pix:S.cfg.pix,nome:S.cfg.pnome,cidade:S.cfg.pcid,wa:S.cfg.wa,ntfy:S.cfg.ntfy||'',loja:S.cfg.name||''};
+  S.cfg.pix=$('#px').value.trim();S.cfg.pnome=$('#pn').value.trim();S.cfg.pcid=$('#pc').value.trim();S.cfg.wa=$('#pw').value.replace(/\D/g,'');S.cfg.ntfy=$('#nt').value.trim();S.cfg.open=$('#oopen').checked;S.cfg.auto=$('#oauto').checked;S.cfg.from=$('#ofrom').value||'07:00';S.cfg.to=$('#oto').value||'23:00';save();
+  const d={pix:S.cfg.pix,nome:S.cfg.pnome,cidade:S.cfg.pcid,wa:S.cfg.wa,ntfy:S.cfg.ntfy||'',open:S.cfg.open!==false,auto:!!S.cfg.auto,from:S.cfg.from||'07:00',to:S.cfg.to||'23:00',loja:S.cfg.name||''};
   await setDoc(doc(db,'config','loja'),d);ocfg=d;ui2();
 }
 async function trans(o,v){
@@ -463,6 +472,7 @@ document.addEventListener('click',async e=>{
     else if(a==='olim'){const v=num($('#l-'+id).value);if(isNaN(v)){msg('Informe o limite em reais.');return}await updateDoc(doc(db,'customers',id),{limit:v});msg('Limite salvo.')}
   }catch(er){erro(er)}
 });
+document.addEventListener('change',async e=>{if(['oopen','oauto','ofrom','oto'].includes(e.target.id)&&me){try{await saveCfg();msg('Status e horário da loja salvos.')}catch(er){erro(er)}}});
 onAuthStateChanged(auth,async u=>{
   unsubs.forEach(f=>f());unsubs=[];me=u;pub=null;seen=null;ui2();
   if(!u){orders=[];cust={};render();return}
@@ -480,7 +490,8 @@ onAuthStateChanged(auth,async u=>{
     cloudSync();
   }catch(e){erro(e)}
 });
-$('#px').value=S.cfg.pix||'';$('#pn').value=S.cfg.pnome||'';$('#pc').value=S.cfg.pcid||'';$('#pw').value=S.cfg.wa||'';$('#nt').value=S.cfg.ntfy||'';
+$('#px').value=S.cfg.pix||'';$('#pn').value=S.cfg.pnome||'';$('#pc').value=S.cfg.pcid||'';$('#pw').value=S.cfg.wa||'';$('#nt').value=S.cfg.ntfy||'';$('#oopen').checked=S.cfg.open!==false;$('#oauto').checked=!!S.cfg.auto;$('#ofrom').value=S.cfg.from||'07:00';$('#oto').value=S.cfg.to||'23:00';
+setInterval(()=>{if(me)ui2()},60000);
 </script>
 </body>
 </html>

@@ -86,6 +86,7 @@ textarea{width:100%;font:12px/1.3 ui-monospace,Menlo,monospace;background:var(--
 #msg:not(:empty){position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:30;max-width:616px;margin:0 auto;background:var(--btn);color:var(--btni);padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700}
 footer{text-align:center;padding-top:28px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.closed{background:var(--soft);border-style:dashed;font-weight:700}
 </style>
 </head>
 <body>
@@ -104,6 +105,7 @@ footer{text-align:center;padding-top:28px}
 <section id="app" hidden>
 <nav id="tabs"><button data-a="t" data-v="loja" aria-pressed="true">Loja</button><button data-a="t" data-v="ped" aria-pressed="false">Meus pedidos<i id="pn" hidden></i></button><button data-a="t" data-v="fia" aria-pressed="false">Fiado</button></nav>
 <div id="sec-loja">
+<div class="card closed" id="closed" hidden></div>
 <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="busca" type="search" placeholder="Buscar produto" autocomplete="off"></div>
 <div class="chips" id="cats"></div>
 <div class="grid" id="grid"></div>
@@ -111,7 +113,7 @@ footer{text-align:center;padding-top:28px}
 <div id="sec-ped" hidden><div id="olist"></div></div>
 <div id="sec-fia" hidden><div id="fiado"></div></div>
 </section>
-<footer class="mut">Versão do app: 8</footer>
+<footer class="mut">Versão do app: 9</footer>
 </main>
 <div id="scrim" data-a="sheet" hidden></div>
 <div id="cart" role="dialog" aria-label="Seu pedido"><div class="sh"><span>Seu pedido</span><button class="x" data-a="sheet" aria-label="Fechar">×</button></div><div id="citems"></div>
@@ -150,6 +152,9 @@ function pixCode(o){
   const p='000201010211'+tl('26',tl('00','br.gov.bcb.pix')+tl('01',pixKey(cfg.pix)))+'52040000'+'5303986'+tl('54',(+o.total).toFixed(2))+'5802BR'+tl('59',asc(cfg.nome||'LOJA',25))+tl('60',asc(cfg.cidade||'BRASIL',15))+tl('62',tl('05',String(o.id).replace(/[^A-Za-z0-9]/g,'').slice(0,20)||'***'))+'6304';
   return p+crc(p);
 }
+const hm=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;return (g('hour')%24)*60+g('minute')};
+const mins=s=>{const [h,m]=String(s||'0:0').split(':');return +h*60+(+m||0)};
+const aberta=c=>{if(c.open===false)return false;if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
 const PR=v=>{const [i,c]=(+v||0).toFixed(2).split('.');return `<span class="price" aria-label="${R(v)}"><span class="rs">R$</span><span class="pi">${(+i).toLocaleString('pt-BR')}</span><span class="pc">,${c}</span></span>`};
 function ocard(o){
   const pix=o.pay==='pix'&&!o.paid&&o.st!=='canc';
@@ -159,15 +164,17 @@ function ocard(o){
   +(o.st==='novo'?`<button class="del" data-a="ocanc" data-id="${o.id}">Cancelar pedido</button>`:'')+`</div>`;
 }
 function render(){
+  const open=aberta(cfg);
   const cs=[...new Set(prods.map(p=>p.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));if(catF&&!cs.includes(catF))catF='';
   $('#cats').innerHTML=cs.length?['',...cs].map(c=>`<button data-a="cat" data-v="${esc(c)}" aria-pressed="${c===catF}">${c?esc(c):'Todas'}</button>`).join(''):'';
   $('#pixnote').hidden=$('#pay').value!=='pix';
+  const cl=$('#closed');cl.hidden=open;if(!open)cl.textContent=cfg.open===false?'A loja não está recebendo pedidos agora. Volte mais tarde.':'Estamos fechados agora. Abrimos às '+(cfg.from||'07:00')+'.';
   const f=$('#busca').value.trim().toLowerCase(),ids=Object.keys(cart).filter(P),tot=ids.reduce((s,id)=>s+P(id).price*cart[id],0);
   $('#grid').innerHTML=!loaded?'<div class="sk"></div>'.repeat(4):(prods.filter(p=>p.name.toLowerCase().includes(f)&&(!catF||p.cat===catF)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const c=cart[p.id]||0;
-    return `<div class="tile${p.qty<=0?' out':''}">${p.img?`<img class="timg" src="${p.img}" alt="${esc(p.name)}">`:`<div class="timg ph">${esc(p.name.slice(0,1).toUpperCase())}</div>`}<div class="info"><span class="nm">${esc(p.name)}</span>${PR(p.price)}<span class="st${p.qty<=3?' low':''}">${p.qty<=0?'Esgotado':p.qty<=3?'Últimas '+p.qty:'Disponível'}</span></div><div class="act">${p.qty<=0?'<button class="addb" disabled>Esgotado</button>':c?`<div class="stp"><button data-a="cm" data-id="${p.id}" aria-label="Tirar 1">−</button><b>${c}</b><button data-a="add" data-id="${p.id}" aria-label="Pôr 1">+</button></div>`:`<button class="addb" data-a="add" data-id="${p.id}">Adicionar</button>`}</div></div>`}).join('')||`<p class="mut em">${prods.length?'Nenhum produto encontrado. Tente outro nome ou categoria.':'A loja ainda não publicou produtos. Volte daqui a pouco.'}</p>`);
-  if(!ids.length)sheet=false;
+    return `<div class="tile${p.qty<=0?' out':''}">${p.img?`<img class="timg" src="${p.img}" alt="${esc(p.name)}">`:`<div class="timg ph">${esc(p.name.slice(0,1).toUpperCase())}</div>`}<div class="info"><span class="nm">${esc(p.name)}</span>${PR(p.price)}<span class="st${p.qty<=3?' low':''}">${p.qty<=0?'Esgotado':p.qty<=3?'Últimas '+p.qty:'Disponível'}</span></div><div class="act">${!open?'<button class="addb" disabled>Fechado agora</button>':p.qty<=0?'<button class="addb" disabled>Esgotado</button>':c?`<div class="stp"><button data-a="cm" data-id="${p.id}" aria-label="Tirar 1">−</button><b>${c}</b><button data-a="add" data-id="${p.id}" aria-label="Pôr 1">+</button></div>`:`<button class="addb" data-a="add" data-id="${p.id}">Adicionar</button>`}</div></div>`}).join('')||`<p class="mut em">${prods.length?'Nenhum produto encontrado. Tente outro nome ou categoria.':'A loja ainda não publicou produtos. Volte daqui a pouco.'}</p>`);
+  if(!ids.length||!open)sheet=false;
   $('#cart').classList.toggle('open',sheet);$('#scrim').hidden=!sheet;
-  const nq=ids.reduce((s,id)=>s+cart[id],0);$('#bar').hidden=!ids.length||sheet;$('#bn').textContent=nq+(nq==1?' item':' itens');$('#bt').textContent=R(tot);
+  const nq=ids.reduce((s,id)=>s+cart[id],0);$('#bar').hidden=!ids.length||sheet||!open;$('#bn').textContent=nq+(nq==1?' item':' itens');$('#bt').textContent=R(tot);
   $('#citems').innerHTML=ids.map(id=>`<div class="ci"><span>${esc(P(id).name)}</span><span class="step"><button data-a="cm" data-id="${id}" aria-label="Tirar 1">−</button><b>${cart[id]}</b><button data-a="add" data-id="${id}" aria-label="Pôr 1">+</button></span><b>${R(P(id).price*cart[id])}</b></div>`).join('');
   $('#ctot').textContent=R(tot);
   $('#ofia').hidden=$('#ofia').disabled=!cust.fiadoOk;if(!cust.fiadoOk)$('#pay').value='pix';
@@ -177,6 +184,7 @@ function render(){
   ['loja','ped','fia'].forEach(k=>$('#sec-'+k).hidden=tab!==k);document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===tab));
 }
 async function order(){
+  if(!aberta(cfg)){msg('A loja está fechada agora.');return}
   const ids=Object.keys(cart).filter(P);if(!ids.length)return;
   const items=ids.map(id=>({p:id,n:P(id).name,q:cart[id],pr:P(id).price})),total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,pay=$('#pay').value;
   if(pay==='fia'&&(cust.balance||0)+total>(cust.limit||0)){msg('Esse pedido passa do seu limite de fiado.');return}
@@ -226,6 +234,7 @@ onAuthStateChanged(auth,u=>{
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#inst').hidden=false});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 addEventListener('unhandledrejection',e=>erro(e.reason||{}));
+setInterval(()=>{if(me)render()},60000);
 render();
 </script>
 </body>
