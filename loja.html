@@ -132,6 +132,7 @@ async function order(){
   if(pay==='fia'&&(cust.balance||0)+total>(cust.limit||0)){msg('Esse pedido passa do seu limite de fiado.');return}
   const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,t:Date.now()});
   cart={};render();let ok=false;
+  if(cfg.ntfy)fetch('https://ntfy.sh/'+encodeURIComponent(cfg.ntfy)+'/publish?title='+encodeURIComponent('Novo pedido')+'&priority=high&tags=shopping_cart&message='+encodeURIComponent(items.reduce((s,i)=>s+i.q,0)+' item(ns), '+R(total)+'. Abra o app para ver.'),{mode:'no-cors'}).catch(()=>{});
   if(pay==='pix'&&cfg.pix){try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}}
   msg(ok?'Pedido enviado! Código Pix copiado: cole no app do seu banco.':'Pedido enviado! Veja o pagamento em Meus pedidos.');
   $('#olist').scrollIntoView({behavior:'smooth'});
