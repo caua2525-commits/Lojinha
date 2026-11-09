@@ -96,3 +96,19 @@
     }catch(e){}
   })();
 })();
+
+/* Pedido único: junta o carrinho da loja com os açaís montados */
+(function(){
+  var note=null;
+  function fr(){var f=document.querySelector('#sec-acai iframe');try{return f&&f.contentWindow}catch(e){return null}}
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-a="order"]');if(!b)return;
+    try{var w=fr();if(w&&w.acaiCupsCount&&w.acaiCupsCount()>0){e.stopImmediatePropagation();e.preventDefault();w.acaiOrder()}}catch(x){}
+  },true);
+  setInterval(function(){
+    var w=fr(),i=null;try{i=w&&w.acaiInfo&&w.acaiInfo()}catch(e){}
+    if(!note){var ci=document.getElementById('citems');if(!ci)return;note=document.createElement('div');note.className='mut';ci.after(note)}
+    note.hidden=!(i&&i.n>0);
+    if(i&&i.n>0)note.textContent='Mais '+i.n+(i.n==1?' açaí montado':' açaís montados')+' na aba Açaí ('+(+i.total).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+'): entram neste mesmo pedido.';
+  },700);
+})();

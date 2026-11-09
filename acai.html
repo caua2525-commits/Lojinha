@@ -69,8 +69,19 @@ let me=null,name='Cliente',cfg={},prods=[],orders=[],cups=[],base=null,pick=new 
 try{told=JSON.parse(localStorage.getItem('told')||'{}')}catch(e){}
 const P=id=>prods.find(p=>p.id===id),bases=()=>prods.filter(p=>nz(p.cat)==='acai'),ings=()=>prods.filter(p=>nz(p.cat)==='ingredientes').sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
 const cobs=()=>prods.filter(p=>/^cobertura/.test(nz(p.cat))).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+function storeItems(){
+  if(parent===window)return [];
+  try{return [...parent.document.querySelectorAll('#citems .ci')].map(r=>{
+    const b=r.querySelector('button[data-id]'),id=b&&b.dataset.id,q=+((r.querySelector('.step b')||{}).textContent),p=P(id);
+    return p&&q>0?{p:id,n:p.name,q,pr:p.price}:null}).filter(Boolean)}catch(e){return []}
+}
+function clearStore(items){
+  try{const d=parent.document,b=d.createElement('button');b.dataset.a='cm';b.hidden=true;d.body.appendChild(b);
+    items.forEach(i=>{b.dataset.id=i.p;for(let k=0;k<i.q;k++)b.click()});b.remove()}catch(e){}
+}
+function goPed(){try{const t=parent.document.querySelector('#tabs button[data-v="ped"]');if(t)t.click()}catch(e){}}
 const cupTot=c=>(P(c.b)?P(c.b).price:0)+c.i.reduce((s,id)=>s+(P(id)?P(id).price:0),0);
-function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
+function msg(t){let m=$('#msg');try{if(parent!==window){const pm=parent.document.getElementById('msg');if(pm)m=pm}}catch(e){}m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(e.code==='permission-denied'?'Sem permissão para essa ação.':'Erro: '+(e.code||e.message));
 const asc=(s,n)=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().slice(0,n);
 const tl=(i,v)=>i+String(v.length).padStart(2,'0')+v;
@@ -101,9 +112,9 @@ function render(){
   const opt=p=>`<label class="opt${p.qty<=0?' off':''}"><span>${esc(p.name)}<br><span class="mut">${p.qty<=0?'Esgotado':p.price>0?'Mais '+R(p.price):'Sem custo'}</span></span><input type="checkbox" data-i="${p.id}"${pick.has(p.id)?' checked':''}${p.qty<=0?' disabled':''}></label>`;
   $('#ings').innerHTML=I.map(opt).join('')||'<p class="mut">Nenhum ingrediente cadastrado ainda.</p>';
   $('#cobs').innerHTML=C.map(opt).join('');$('#cth').hidden=!C.length;
-  const tot=cups.reduce((s,c)=>s+cupTot(c),0);
+  const store=cups.length?storeItems():[],tot=cups.reduce((s,c)=>s+cupTot(c),0)+store.reduce((s,i)=>s+i.pr*i.q,0);
   $('#cartw').hidden=!cups.length;
-  $('#cups').innerHTML=cups.map((c,k)=>`<div class="cup"><span><b>${esc(P(c.b)?P(c.b).name:'Açaí')}</b><br><span class="mut">${c.i.map(id=>esc(P(id)?P(id).name:'')).join(', ')||'Sem ingredientes'}</span></span><span><b>${R(cupTot(c))}</b><br><button class="del" data-r="${k}">Remover</button></span></div>`).join('');
+  $('#cups').innerHTML=cups.map((c,k)=>`<div class="cup"><span><b>${esc(P(c.b)?P(c.b).name:'Açaí')}</b><br><span class="mut">${c.i.map(id=>esc(P(id)?P(id).name:'')).join(', ')||'Sem ingredientes'}</span></span><span><b>${R(cupTot(c))}</b><br><button class="del" data-r="${k}">Remover</button></span></div>`).join('')+store.map(i=>`<div class="cup"><span>${i.q}x ${esc(i.n)}<br><span class="mut">Item da loja</span></span><b>${R(i.pr*i.q)}</b></div>`).join('');
   $('#go').textContent='Fazer pedido: '+R(tot);
   const isA=i=>{const p=P(i.p),c=p?nz(p.cat):'';return c==='acai'||c==='ingredientes'||c.indexOf('cobertura')===0};
   const ac=orders.filter(o=>ST[o.st]&&(o.items||[]).some(isA)).sort((a,b)=>b.t-a.t);
@@ -118,17 +129,19 @@ function ready(o){
     (navigator.serviceWorker?navigator.serviceWorker.ready.then(r=>r.showNotification(t,op)):Promise.reject()).catch(()=>{try{new Notification(t,op)}catch(e){}});
   }
 }
-async function order(){
+async function order(fromParent){
   if(!cups.length)return;
   if(!aberta(cfg)){msg('A loja não está recebendo pedidos agora.');return}
   if(!cfg.pix){msg('A loja ainda não cadastrou a chave Pix. Fale com a loja.');return}
-  const multi=cups.length>1,items=[];
+  if(fromParent){try{const pv=parent.document.getElementById('pay');if(pv&&pv.value!=='pix'){msg('Pedidos com açaí são pagos por Pix. Escolha Pix na forma de pagamento.');return}}catch(e){}}
+  const store=storeItems(),multi=cups.length>1,items=[];
   cups.forEach((c,k)=>{const s=multi?' (copo '+(k+1)+')':'',b=P(c.b);items.push({p:b.id,n:b.name+s,q:1,pr:b.price});c.i.forEach(id=>{const g=P(id);items.push({p:id,n:'+ '+g.name+s,q:1,pr:g.price})})});
-  const total=Math.round(items.reduce((s,i)=>s+i.pr,0)*100)/100;
+  store.forEach(i=>items.push(i));
+  const total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100;
   const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name,items,total,pay:'pix',st:'novo',paid:false,t:Date.now()});
   ntfy('Novo pedido de açaí','O cliente '+name+' fez um pedido de '+R(total)+'. Abra o app para ver.');
   let ok=false;try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}
-  cups=[];base=null;pick=new Set();render();
+  cups=[];base=null;pick=new Set();clearStore(store);render();if(fromParent)goPed();
   msg(ok?'Pedido enviado! Código Pix copiado: cole no app do banco.':'Pedido enviado! Copie o código Pix abaixo.');
 }
 document.addEventListener('click',async e=>{
@@ -137,6 +150,7 @@ document.addEventListener('click',async e=>{
     if(b.dataset.b){base=b.dataset.b;pick=new Set();render()}
     else if(b.id==='addc'){
       const c={b:base,i:[...pick]},u={};[...cups,c].forEach(x=>[x.b,...x.i].forEach(id=>u[id]=(u[id]||0)+1));
+      storeItems().forEach(i=>u[i.p]=(u[i.p]||0)+i.q);
       const bad=Object.keys(u).find(id=>!P(id)||u[id]>P(id).qty);
       if(bad){msg('Sem estoque suficiente de '+(P(bad)?P(bad).name:'um item')+'.');return}
       cups.push(c);base=null;pick=new Set();render();msg('Açaí adicionado ao pedido.')}
@@ -165,6 +179,10 @@ onAuthStateChanged(auth,async u=>{
   ];
 });
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+window.acaiCupsCount=()=>cups.length;
+window.acaiInfo=()=>({n:cups.length,total:cups.reduce((s,c)=>s+cupTot(c),0)});
+window.acaiOrder=()=>order(true).catch(erro);
+let sig='';setInterval(()=>{const s=JSON.stringify(storeItems());if(s!==sig){sig=s;render()}},700);
 render();
 </script>
 </body>
