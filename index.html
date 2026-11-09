@@ -92,6 +92,8 @@ label.fbtn{flex-direction:row;justify-content:center;padding:10px 14px;border:1p
 details{margin-top:8px}summary{cursor:pointer}.pl span{padding-right:8px}
 label.chk{flex-direction:row;align-items:center;gap:10px;font-size:15px;color:var(--ink)}
 input[type=checkbox]{width:22px;height:22px;flex:none;padding:0}
+.cnt{display:flex;gap:8px;align-items:center}.cnt input{width:88px;padding:7px 8px}.cnt b{min-width:34px;text-align:right}.neg{color:var(--wn)}
+details.card summary{cursor:pointer}
 </style>
 </head>
 <body>
@@ -118,6 +120,11 @@ input[type=checkbox]{width:22px;height:22px;flex:none;padding:0}
 <div class="card add"><b>Registrar perda</b><label>Produto<select id="lp"></select></label>
 <div class="two"><input id="lq" type="number" inputmode="numeric" min="1" placeholder="Quantidade"><select id="lw"><option>Vencido</option><option>Quebrado</option><option>Outro</option></select></div>
 <button class="sec" data-a="loss">Registrar perda</button></div>
+<div class="card add"><b>Entrada de mercadoria</b><label>Produto<select id="ep"></select></label>
+<div class="two"><input id="eq" type="number" inputmode="numeric" min="1" placeholder="Quantidade"><input id="ec" inputmode="decimal" placeholder="Custo por unidade (R$)"></div>
+<input id="ef" placeholder="Fornecedor (opcional)" autocomplete="off">
+<button class="pri" data-a="entra">Registrar entrada</button><div id="elist"></div></div>
+<details class="card" id="confd"><summary><b>Conferir estoque</b> <span class="mut">contagem na prateleira</span></summary><div id="conf"></div><button class="pri wa" data-a="aplica">Aplicar contagem</button><div id="adjl"></div></details>
 <div class="card add"><b>Loja</b><label>Nome da loja<input id="sn" placeholder="Minha Lojinha" autocomplete="off"></label>
 <div id="pinset" class="add"><label>PIN para ver custo e lucro (4 a 6 números; vazio remove)<input id="sp" type="password" inputmode="numeric"></label><button class="sec" data-a="setpin">Salvar PIN</button><div class="mut">É um bloqueio simples contra olhares curiosos, não uma proteção forte.</div></div></div>
 <div class="card add"><b>Backup</b><div class="mut">Os dados ficam salvos neste aparelho. Baixe um backup de vez em quando.</div>
@@ -129,7 +136,7 @@ input[type=checkbox]{width:22px;height:22px;flex:none;padding:0}
 <input id="oe" type="email" placeholder="E-mail do dono" autocomplete="email"><input id="op" type="password" placeholder="Senha" autocomplete="current-password">
 <div class="two"><button class="pri" data-a="olog">Entrar</button><button class="sec" data-a="oreg">Criar conta</button></div></div>
 <div id="ologged" hidden>
-<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 10</div>
+<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 12</div>
 <div class="mut" id="oshop"></div>
 <label class="chk"><input type="checkbox" id="oopen"> Aceitar pedidos agora</label>
 <label class="chk"><input type="checkbox" id="oauto"> Abrir e fechar sozinho nos horários abaixo</label>
@@ -140,6 +147,8 @@ input[type=checkbox]{width:22px;height:22px;flex:none;padding:0}
 <label>Código dos avisos de pedido no celular (ntfy)<input id="nt" autocomplete="off" autocapitalize="off"></label>
 <div class="two"><button class="sec" data-a="ontgen">Gerar código</button><button class="sec" data-a="onttest">Enviar teste</button></div>
 <button class="pri" data-a="osave">Salvar dados</button><button class="sec" data-a="oshare">Enviar o link da loja aos clientes</button><button class="sec" data-a="oout">Sair da conta</button></div>
+<div class="card add"><b>Backup na nuvem</b><div class="mut" id="bkst"></div><div class="mut">Estoque, vendas, fiado e clientes são copiados sozinhos. Para usar outro celular, entre com a mesma conta e restaure. Use um celular de cada vez.</div>
+<div class="two"><button class="sec" data-a="bknow">Fazer backup agora</button><button class="sec" data-a="bkrestore">Restaurar da nuvem</button></div></div>
 <h2>Pedidos</h2><div id="plist"></div><h2>Clientes do app</h2><div id="clist"></div></div>
 </section>
 <section id="v-fiado" hidden><div id="fres"></div></section>
@@ -157,8 +166,8 @@ input[type=checkbox]{width:22px;height:22px;flex:none;padding:0}
 <div id="scanbox" hidden><video id="vid" playsinline muted></video><div class="sb"><span id="scanmsg"></span><button class="pri" data-a="scanx">Fechar</button></div></div>
 <script>
 const KEY='lojinha_v3',$=s=>document.querySelector(s);
-const DEF=()=>({products:[],sales:[],days:{},cfg:{},clients:[],led:[],loss:[]});
-let S=DEF(),cart={},pay='din',day=new Date().toLocaleDateString('sv-SE'),armed=null,ip=null,unlocked=false,catF='',stream=null,scanT=null;
+const DEF=()=>({products:[],sales:[],days:{},cfg:{},clients:[],led:[],loss:[],buys:[],adj:[]});
+let S=DEF(),cart={},pay='din',day=new Date().toLocaleDateString('sv-SE'),armed=null,ip=null,unlocked=false,catF='',stream=null,scanT=null,cnt={};
 const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const today=()=>new Date().toLocaleDateString('sv-SE');
@@ -233,14 +242,14 @@ function renderCart(){
   troco();
 }
 function renderRes(){
-  const{m,pt,lo}=agg(),ex=S.products.filter(p=>p.exp&&p.qty>0).map(p=>({p,d:Math.round((new Date(p.exp+'T12:00:00')-new Date(today()+'T12:00:00'))/864e5)})).filter(x=>x.d<=7).sort((a,b)=>a.d-b.d),rows=Object.entries(m).sort((a,b)=>b[1].r-a[1].r),T=sum(m),need=S.products.filter(p=>p.qty<=mn(p));
+  const rg=range(),bu=S.buys.filter(b=>rg.includes(b.d)).reduce((s,b)=>s+b.q*b.c,0),aj=S.adj.filter(a=>rg.includes(a.d)),{m,pt,lo}=agg(),ex=S.products.filter(p=>p.exp&&p.qty>0).map(p=>({p,d:Math.round((new Date(p.exp+'T12:00:00')-new Date(today()+'T12:00:00'))/864e5)})).filter(x=>x.d<=7).sort((a,b)=>a.d-b.d),rows=Object.entries(m).sort((a,b)=>b[1].r-a[1].r),T=sum(m),need=S.products.filter(p=>p.qty<=mn(p));
   const one=$('#per').value==='d',ss=one?S.sales.filter(s=>s.d===day).sort((a,b)=>b.t-a.t):[];
   $('#dt').value=day;
   $('#res').innerHTML=`<div class="tot"><span>Total vendido</span><b>${R(T.r)}</b><span>${T.q} ${T.q==1?'item':'itens'}${pt.fia>0?', fiado fora do total: '+R(pt.fia):''}${priv()&&T.c>0?`, lucro estimado ${R(T.r-T.c)}`:''}</span></div>`
   +`<div class="card"><b>Fechamento por forma de pagamento</b>${['din','pix','car','fia'].map(k=>`<div class="pl"><span>${PL[k]}${k==='din'?' (no caixa)':k==='fia'?' (a receber)':''}</span><b>${R(pt[k])}</b></div>`).join('')}${pt.old>0?`<div class="pl"><span>Sem forma registrada</span><b>${R(pt.old)}</b></div>`:''}${pt.rec>0?`<div class="mut">Inclui ${R(pt.rec)} recebidos de fiado.</div>`:''}</div>`
   +(rows.length?`<table><tr><th>Produto</th><th>Qtd</th><th>Total</th><th>Estoque</th></tr>${rows.map(([id,i])=>`<tr><td>${esc(i.n)}</td><td>${i.q}</td><td>${R(i.r)}</td><td>${P(id)?P(id).qty:'-'}</td></tr>`).join('')}</table><button class="pri wa" data-a="wa">Enviar resumo no WhatsApp</button>`:`<p class="mut">Nenhuma venda neste período.</p>`)
   +(ss.length?`<h2>Vendas do dia</h2>${ss.map(s=>`<div class="row"><div class="rh"><b class="nmi">${hh(s.t)}, ${PL[s.pay]}</b><b>${R(s.tot)}</b></div><div class="mut">${s.items.map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><button class="del" data-a="cancel" data-id="${s.id}">${armed===s.id?'Confirmar cancelamento':'Cancelar venda'}</button></div>`).join('')}`:'')
-  +(lo.q>0?`<p class="mut">Perdas no período: ${lo.q} un${priv()?`, custo ${R(lo.c)}`:''}.</p>`:'')+`<h2>Validade</h2>`+(ex.length?`<div class="chips">${ex.map(x=>`<span class="chip">${esc(x.p.name)}: ${x.d<0?'vencido':x.d===0?'vence hoje':'vence em '+x.d+' d'}</span>`).join('')}</div>`:`<p class="mut">Nada vencendo nos próximos 7 dias.</p>`)+`<h2>Lista de compras</h2>`+(need.length?`<div class="chips">${need.map(p=>`<span class="chip">${esc(p.name)}: restam ${p.qty}</span>`).join('')}</div><button class="pri wa" data-a="buy">Enviar lista pelo WhatsApp</button>`:`<p class="mut">Nenhum produto abaixo do mínimo.</p>`);
+  +(bu>0&&priv()?`<p class="mut">Compras de mercadoria no período: ${R(bu)}.</p>`:'')+(aj.length?`<p class="mut">Conferências de estoque: ${aj.length} ajuste(s)${priv()?', diferença de '+R(aj.reduce((s,a)=>s+(a.v-a.a)*a.c,0)):''}.</p>`:'')+(lo.q>0?`<p class="mut">Perdas no período: ${lo.q} un${priv()?`, custo ${R(lo.c)}`:''}.</p>`:'')+`<h2>Validade</h2>`+(ex.length?`<div class="chips">${ex.map(x=>`<span class="chip">${esc(x.p.name)}: ${x.d<0?'vencido':x.d===0?'vence hoje':'vence em '+x.d+' d'}</span>`).join('')}</div>`:`<p class="mut">Nada vencendo nos próximos 7 dias.</p>`)+`<h2>Lista de compras</h2>`+(need.length?`<div class="chips">${need.map(p=>`<span class="chip">${esc(p.name)}: restam ${p.qty}</span>`).join('')}</div><button class="pri wa" data-a="buy">Enviar lista pelo WhatsApp</button>`:`<p class="mut">Nenhum produto abaixo do mínimo.</p>`);
 }
 function render(){
   const f=$('#busca').value.trim().toLowerCase(),L=S.products.filter(p=>p.name.toLowerCase().includes(f)&&(!catF||p.cat===catF)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),A=agg([today()]),T=sum(A.m);
@@ -264,6 +273,10 @@ function ui(){
   $('#lp').innerHTML=S.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');$('#lp').value=lv;
   $('#cli').innerHTML='<option value="">Escolha o cliente</option>'+S.clients.map(c=>`<option value="${c.id}">${esc(c.name)} (${R(bal(c.id))})</option>`).join('');$('#cli').value=cv;
   $('#sn').value=S.cfg.name||'';
+  {const v=$('#ep').value;$('#ep').innerHTML=S.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');$('#ep').value=v}
+  $('#elist').innerHTML=S.buys.slice(-8).reverse().map(b=>`<div class="pl"><span>${b.d.split('-').reverse().slice(0,2).join('/')}: +${b.q} ${esc(b.n)}${b.f?' ('+esc(b.f)+')':''}</span>${priv()?`<b>${R(b.c)}</b>`:''}</div>`).join('');
+  $('#conf').innerHTML=S.products.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const v=cnt[p.id];return `<div class="pl"><span>${esc(p.name)}<br><span class="mut">no app: ${p.qty}</span></span><span class="cnt"><input type="number" inputmode="numeric" min="0" data-cnt="${p.id}" value="${v===undefined?'':v}" placeholder="contei"><b class="${v!==undefined&&v<p.qty?'neg':''}">${v===undefined?'':(v>p.qty?'+':'')+(v-p.qty)}</b></span></div>`}).join('')||'<p class="mut">Sem produtos.</p>';
+  $('#adjl').innerHTML=S.adj.slice(-6).reverse().map(a=>`<div class="mut">${a.d.split('-').reverse().slice(0,2).join('/')}: ${esc(a.n)}, de ${a.a} para ${a.v}</div>`).join('');
 }
 function hist(id,open){
   const ev=[...S.sales.filter(s=>s.cid===id&&s.pay==='fia').map(s=>({t:s.t,x:s.items.map(i=>`${i.q}x ${esc(i.n)}`).join(', '),v:s.tot})),
@@ -344,6 +357,16 @@ document.addEventListener('click',e=>{
     const qq=Math.min(q,p2.qty);if(qq<=0){msg('Esse produto está sem estoque.');return}
     S.loss.push({id:uid(),t:Date.now(),d:today(),pid:p2.id,n:p2.name,q:qq,c:p2.cost||0,w:$('#lw').value});
     p2.qty-=qq;$('#lq').value='';save();render();msg('Perda registrada.')}
+  else if(a==='entra'){const p2=P($('#ep').value),q=Math.round(num($('#eq').value)),c=num($('#ec').value);
+    if(!p2||!(q>0)){msg('Escolha o produto e a quantidade.');return}
+    const cu=isNaN(c)?(p2.cost||0):c,base=Math.max(0,p2.qty);
+    p2.cost=rd((base*(p2.cost||0)+q*cu)/(base+q));p2.qty+=q;
+    S.buys.push({id:uid(),t:Date.now(),d:today(),pid:p2.id,n:p2.name,q,c:cu,f:$('#ef').value.trim()});
+    ['#eq','#ec','#ef'].forEach(s=>$(s).value='');save();render();msg('Entrada registrada. Custo médio atualizado.')}
+  else if(a==='aplica'){let n=0,lost=0,gain=0;
+    Object.entries(cnt).forEach(([k,v])=>{const p2=P(k);if(!p2||v===p2.qty)return;const d=v-p2.qty,cc=p2.cost||0;S.adj.push({id:uid(),t:Date.now(),d:today(),pid:k,n:p2.name,a:p2.qty,v,c:cc});if(d<0)lost+=-d*cc;else gain+=d*cc;p2.qty=v;n++});
+    cnt={};if(!n){msg('Nenhuma diferença para ajustar.');render();return}
+    save();render();msg(n+' produto(s) ajustado(s).'+(priv()?' Faltas: '+R(lost)+'. Sobras: '+R(gain)+'.':''))}
   else if(a==='rec'){const x=num($('#r-'+id).value),b0=bal(id);
     if(!(x>0)){msg('Informe o valor recebido.');return}
     S.led.push({id:uid(),cid:id,t:Date.now(),d:today(),amt:-Math.min(x,b0),m:$('#m-'+id).value});save();render();msg('Pagamento registrado.')}
@@ -354,6 +377,9 @@ document.addEventListener('click',e=>{
   else if(a==='inst'){if(ip)ip.prompt();b.hidden=true}
 });
 document.addEventListener('input',e=>{if(e.target.id==='busca')render();else if(e.target.id==='rec')troco()});
+document.addEventListener('input',e=>{const k=e.target.dataset.cnt;if(!k)return;const p=P(k);if(!p)return;const v=e.target.value;
+  if(v==='')delete cnt[k];else cnt[k]=Math.max(0,Math.round(+v));
+  const d=cnt[k]===undefined?'':cnt[k]-p.qty,b=e.target.nextElementSibling;b.textContent=d===''?'':(d>0?'+':'')+d;b.className=d!==''&&d<0?'neg':''});
 document.addEventListener('change',e=>{const id=e.target.dataset.img;if(id&&e.target.files[0]){setImg(id,e.target.files[0]);e.target.value=''}});
 document.addEventListener('change',e=>{
   const t=e.target,f=t.dataset.f,p=P(t.dataset.id);
@@ -393,7 +419,7 @@ import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOu
 import {getFirestore,collection,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
 const auth=getAuth(app),db=getFirestore(app);
-let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={},cerr='';
+let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={},cerr='',bkT=null,bkDays=null,bkt=0,rarm=false,bkMain='';
 const ST={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
 const hm=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;return (g('hour')%24)*60+g('minute')};
@@ -417,17 +443,41 @@ window.renderPed=()=>{
   $('#clist').innerHTML=Object.entries(cust).map(([id,c])=>`<div class="row"><div class="rh"><b class="nmi">${esc(c.name)}</b><b>${R(bal(id))}</b></div><div class="mut">${esc(c.email||'')}</div><div class="two"><input id="l-${id}" inputmode="decimal" placeholder="Limite (R$)" value="${c.limit||''}">${btn('olim','','Salvar limite','sec',id)}</div>${btn('ofia','',c.fiadoOk?'Bloquear fiado':'Liberar fiado',c.fiadoOk?'sec':'pri',id)}</div>`).join('')||(cerr?'<p class="mut">Não consegui carregar os clientes: '+cerr+'.</p>':'<p class="mut">Nenhum cliente apareceu ainda. Quem criou a conta antes das últimas atualizações aparece depois de abrir o app da loja uma vez.</p>');
 };
 window.cloudSync=()=>{
-  if(!me||!pub)return;clearTimeout(timer);
+  if(!me||!pub)return;if(vazio()&&bkt)return;clearTimeout(bkT);bkT=setTimeout(()=>backupNow().catch(erro),4000);clearTimeout(timer);
   timer=setTimeout(async()=>{
     try{
       const ids=new Set(S.products.map(p=>p.id));
       for(const p of S.products){const d={name:p.name,price:p.price,qty:p.qty,cat:p.cat||'',img:p.img||''},j=JSON.stringify(d);
         if(pub[p.id]!==j){await setDoc(doc(db,'products',p.id),d);pub[p.id]=j}}
-      for(const id in pub)if(!ids.has(id)){await deleteDoc(doc(db,'products',id));delete pub[id]}
+      for(const id in pub)if(S.products.length&&!ids.has(id)){await deleteDoc(doc(db,'products',id));delete pub[id]}
       for(const id in cust){const b=bal(id);if(cust[id].balance!==b){await updateDoc(doc(db,'customers',id),{balance:b});cust[id].balance=b}}
     }catch(e){erro(e)}
   },1200);
 };
+const vazio=()=>!S.products.length&&!S.sales.length&&!S.led.length;
+function bkUi(){const e=$('#bkst');if(!e)return;e.textContent=!me?'':!bkDays?'Backup indisponível: as regras do Firestore ainda não liberam a pasta backup.':vazio()&&bkt?'Este celular está vazio. Toque em Restaurar da nuvem.':bkt?'Último backup: '+new Date(bkt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Ainda sem backup na nuvem.'}
+async function backupNow(force){
+  if(!me||!pub||!bkDays)return;
+  if(vazio()&&bkt){bkUi();return}
+  const cur=await getDoc(doc(db,'backup','main'));
+  if(!force&&cur.exists()&&(cur.data().t||0)>(S.bkT||0)){$('#bkst').textContent='Atenção: outro celular fez um backup mais novo. Toque em Restaurar da nuvem para pegar esses dados, ou em Fazer backup agora para sobrescrever.';return}
+  const byDay={};S.sales.forEach(s=>(byDay[s.d]=byDay[s.d]||[]).push(s));
+  for(const d of new Set([...Object.keys(byDay),...Object.keys(bkDays)])){const j=JSON.stringify(byDay[d]||[]);if(bkDays[d]!==j){await setDoc(doc(db,'backup','s-'+d),{json:j});bkDays[d]=j}}
+  const m=JSON.parse(JSON.stringify(S));m.products.forEach(p=>delete p.img);delete m.sales;delete m.bkT;
+  const jm=JSON.stringify(m);
+  if(jm!==bkMain||force){bkt=Date.now();await setDoc(doc(db,'backup','main'),{json:jm,t:bkt});bkMain=jm;S.bkT=bkt;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+  bkUi();
+}
+async function restore(){
+  const ds=await getDocs(collection(db,'backup'));let main=null,t=0;const sales=[];
+  ds.forEach(d=>{if(d.id==='main'){main=JSON.parse(d.data().json);t=d.data().t||0}else if(d.id.startsWith('s-'))sales.push(...JSON.parse(d.data().json))});
+  if(!main){msg('Ainda não há backup na nuvem.');return}
+  const ps=await getDocs(collection(db,'products')),im={};ps.forEach(d=>{if(d.data().img)im[d.id]=d.data().img});
+  (main.products||[]).forEach(p=>{if(im[p.id])p.img=im[p.id]});
+  S=Object.assign(DEF(),main,{sales,bkT:t});bkt=t;bkMain='';cart={};armed=null;
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  render();bkUi();cloudSync();msg('Dados restaurados da nuvem.');
+}
 async function saveCfg(){
   S.cfg.pix=$('#px').value.trim();S.cfg.pnome=$('#pn').value.trim();S.cfg.pcid=$('#pc').value.trim();S.cfg.wa=$('#pw').value.replace(/\D/g,'');S.cfg.ntfy=$('#nt').value.trim();S.cfg.open=$('#oopen').checked;S.cfg.auto=$('#oauto').checked;S.cfg.from=$('#ofrom').value||'07:00';S.cfg.to=$('#oto').value||'23:00';save();
   const d={pix:S.cfg.pix,nome:S.cfg.pnome,cidade:S.cfg.pcid,wa:S.cfg.wa,ntfy:S.cfg.ntfy||'',open:S.cfg.open!==false,auto:!!S.cfg.auto,from:S.cfg.from||'07:00',to:S.cfg.to||'23:00',loja:S.cfg.name||''};
@@ -465,6 +515,8 @@ document.addEventListener('click',async e=>{
     else if(a==='onttest'){const t=$('#nt').value.trim();if(!t){msg('Gere ou digite o código primeiro.');return}
       await saveCfg();
       await fetch('https://ntfy.sh/'+encodeURIComponent(t)+'/publish?title='+encodeURIComponent('Teste da loja')+'&tags=white_check_mark&message='+encodeURIComponent('Se você recebeu isto, os avisos de pedido estão funcionando.'),{mode:'no-cors'});msg('Teste enviado. Veja se chegou no app ntfy.')}
+    else if(a==='bknow'){if(!bkDays){msg('O backup ainda não está liberado nas regras do Firestore.');return}await backupNow(true);msg('Backup feito.')}
+    else if(a==='bkrestore'){if(!rarm){rarm=true;b.textContent='Confirmar: troca os dados deste celular';setTimeout(()=>{rarm=false;b.textContent='Restaurar da nuvem'},6000);return}rarm=false;b.textContent='Restaurar da nuvem';await restore()}
     else if(a==='oshare')send('Peça pelo app da loja: '+location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'loja.html');
     else if(a==='opix'&&o){await updateDoc(doc(db,'orders',id),{paid:true});msg('Pix marcado como recebido.')}
     else if(a==='ost'&&o)await trans(o,b.dataset.v);
@@ -479,6 +531,7 @@ onAuthStateChanged(auth,async u=>{
   try{
     const ps=await getDocs(collection(db,'products')),pb={};ps.forEach(d=>pb[d.id]=JSON.stringify(d.data()));pub=pb;
     try{const c=await getDoc(doc(db,'config','loja'));ocfg=c.exists()?c.data():{};ui2()}catch(e){}
+    try{const b=await getDocs(collection(db,'backup'));bkDays={};b.forEach(d=>{if(d.id==='main')bkt=d.data().t||0;else if(d.id.startsWith('s-'))bkDays[d.id.slice(2)]=d.data().json});bkUi()}catch(e){bkDays=null;bkUi()}
     unsubs=[
       onSnapshot(collection(db,'orders'),s=>{const l=s.docs.map(d=>({id:d.id,...d.data()}));
         if(seen)l.filter(o=>!seen.has(o.id)&&o.st==='novo').forEach(o=>{msg('Novo pedido de '+o.name+': '+R(o.total));if(navigator.vibrate)navigator.vibrate([200,100,200])});
