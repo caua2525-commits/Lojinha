@@ -105,7 +105,8 @@ function render(){
   $('#cartw').hidden=!cups.length;
   $('#cups').innerHTML=cups.map((c,k)=>`<div class="cup"><span><b>${esc(P(c.b)?P(c.b).name:'Açaí')}</b><br><span class="mut">${c.i.map(id=>esc(P(id)?P(id).name:'')).join(', ')||'Sem ingredientes'}</span></span><span><b>${R(cupTot(c))}</b><br><button class="del" data-r="${k}">Remover</button></span></div>`).join('');
   $('#go').textContent='Fazer pedido: '+R(tot);
-  const ac=orders.filter(o=>ST[o.st]).sort((a,b)=>b.t-a.t);
+  const isA=i=>{const p=P(i.p),c=p?nz(p.cat):'';return c==='acai'||c==='ingredientes'||c.indexOf('cobertura')===0};
+  const ac=orders.filter(o=>ST[o.st]&&(o.items||[]).some(isA)).sort((a,b)=>b.t-a.t);
   $('#orders').innerHTML=ac.map(o=>`<div class="card"><div class="rh"><span class="pill ${o.st}">${ST[o.st]}</span><b>${R(o.total)}</b></div><div class="mut">${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div>`
     +(o.pay==='pix'&&!o.paid?(cfg.pix?`<div class="mut" style="margin-top:8px">Pague ${R(o.total)} por Pix: copie o código e cole no app do banco, em Pix Copia e Cola.</div><textarea readonly rows="4" onfocus="this.select()">${pixCode(o)}</textarea><button class="sec" data-c="${o.id}">Copiar código Pix</button><button class="pri" data-p="${o.id}"${told[o.id]?' disabled':''}>${told[o.id]?'Aviso enviado. Aguarde a confirmação':'Já paguei'}</button>`:'<div class="mut">A loja ainda não cadastrou a chave Pix. Fale com a loja.</div>'):'<div class="mut">Pagamento confirmado pela loja.</div>')+'</div>').join('')||'<p class="mut">Nenhum pedido em andamento.</p>';
   $('#nt').hidden=!(window.Notification&&Notification.permission==='default');
