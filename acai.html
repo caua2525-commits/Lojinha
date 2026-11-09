@@ -48,7 +48,7 @@ textarea{width:100%;margin-top:8px;font:12px/1.3 ui-monospace,Menlo,monospace;ba
 <div id="app" hidden>
 <h2>Escolha o açaí</h2>
 <div id="bases"></div>
-<div id="ingw" class="card" hidden><b>Escolha os ingredientes</b><div id="ings"></div><button class="pri" id="addc">Adicionar ao pedido</button></div>
+<div id="ingw" class="card" hidden><b>Escolha os ingredientes</b><div id="ings"></div><b id="cth" style="display:block;margin-top:16px" hidden>Escolha a cobertura</b><div id="cobs"></div><button class="pri" id="addc">Adicionar ao pedido</button></div>
 <div id="cartw" class="card" hidden><b>Seu pedido</b><div id="cups"></div><button class="pri" id="go"></button><div class="mut" style="margin-top:8px">O pagamento é por Pix. O código aparece logo depois de enviar o pedido.</div></div>
 <h2>Pedidos em andamento</h2>
 <div id="orders"></div>
@@ -68,6 +68,7 @@ const ST={novo:'Aguardando a loja',sep:'Em preparo',pronto:'Pronto para retirar'
 let me=null,name='Cliente',cfg={},prods=[],orders=[],cups=[],base=null,pick=new Set(),prev=null,unsubs=[],told={};
 try{told=JSON.parse(localStorage.getItem('told')||'{}')}catch(e){}
 const P=id=>prods.find(p=>p.id===id),bases=()=>prods.filter(p=>nz(p.cat)==='acai'),ings=()=>prods.filter(p=>nz(p.cat)==='ingredientes').sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+const cobs=()=>prods.filter(p=>/^cobertura/.test(nz(p.cat))).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
 const cupTot=c=>(P(c.b)?P(c.b).price:0)+c.i.reduce((s,id)=>s+(P(id)?P(id).price:0),0);
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(e.code==='permission-denied'?'Sem permissão para essa ação.':'Erro: '+(e.code||e.message));
@@ -94,10 +95,12 @@ const mins=s=>{const [h,m]=String(s||'0:0').split(':');return +h*60+(+m||0)};
 const aberta=c=>{if(c.open===false)return false;if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
 const ntfy=(t,m)=>{if(cfg.ntfy)fetch('https://ntfy.sh/'+encodeURIComponent(cfg.ntfy)+'/publish?title='+encodeURIComponent(t)+'&priority=high&tags=shopping_cart&message='+encodeURIComponent(m),{mode:'no-cors'}).catch(()=>{})};
 function render(){
-  const B=bases(),I=ings();
+  const B=bases(),I=ings(),C=cobs();
   $('#bases').innerHTML=B.length?B.map(p=>`<button class="base" data-b="${p.id}" aria-pressed="${base===p.id}"${p.qty<=0?' disabled':''}><span>${esc(p.name)}</span><span>${p.qty<=0?'Esgotado':R(p.price)}</span></button>`).join(''):'<p class="mut">Os açaís ainda não foram cadastrados na loja.</p>';
   $('#ingw').hidden=!base;
-  $('#ings').innerHTML=I.map(p=>`<label class="opt${p.qty<=0?' off':''}"><span>${esc(p.name)}<br><span class="mut">${p.qty<=0?'Esgotado':p.price>0?'Mais '+R(p.price):'Sem custo'}</span></span><input type="checkbox" data-i="${p.id}"${pick.has(p.id)?' checked':''}${p.qty<=0?' disabled':''}></label>`).join('')||'<p class="mut">Nenhum ingrediente cadastrado ainda.</p>';
+  const opt=p=>`<label class="opt${p.qty<=0?' off':''}"><span>${esc(p.name)}<br><span class="mut">${p.qty<=0?'Esgotado':p.price>0?'Mais '+R(p.price):'Sem custo'}</span></span><input type="checkbox" data-i="${p.id}"${pick.has(p.id)?' checked':''}${p.qty<=0?' disabled':''}></label>`;
+  $('#ings').innerHTML=I.map(opt).join('')||'<p class="mut">Nenhum ingrediente cadastrado ainda.</p>';
+  $('#cobs').innerHTML=C.map(opt).join('');$('#cth').hidden=!C.length;
   const tot=cups.reduce((s,c)=>s+cupTot(c),0);
   $('#cartw').hidden=!cups.length;
   $('#cups').innerHTML=cups.map((c,k)=>`<div class="cup"><span><b>${esc(P(c.b)?P(c.b).name:'Açaí')}</b><br><span class="mut">${c.i.map(id=>esc(P(id)?P(id).name:'')).join(', ')||'Sem ingredientes'}</span></span><span><b>${R(cupTot(c))}</b><br><button class="del" data-r="${k}">Remover</button></span></div>`).join('');

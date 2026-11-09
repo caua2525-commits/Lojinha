@@ -21,3 +21,34 @@
     f.src=u;
   })();
 })();
+
+/* Esconde da aba Loja os produtos das categorias Açaí, Ingredientes e Cobertura */
+(function(){
+  var V='https://www.gstatic.com/firebasejs/10.14.1/';
+  var nz=function(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()};
+  var esconde=function(c){c=nz(c);return c==='acai'||c==='ingredientes'||c.indexOf('cobertura')===0};
+  var ids={},un=null,grid=document.getElementById('grid'),cats=document.getElementById('cats');
+  function apply(){
+    if(grid)grid.querySelectorAll('.tile').forEach(function(t){var b=t.querySelector('[data-id]');t.hidden=!!(b&&ids[b.dataset.id])});
+    if(cats)cats.querySelectorAll('button').forEach(function(b){b.hidden=esconde(b.textContent)});
+  }
+  var mo=new MutationObserver(apply);
+  if(grid)mo.observe(grid,{childList:true});
+  if(cats)mo.observe(cats,{childList:true});
+  (async function(){
+    try{
+      var A=await import(V+'firebase-app.js'),Au=await import(V+'firebase-auth.js'),F=await import(V+'firebase-firestore.js');
+      var app;
+      for(var i=0;i<50&&!(app=A.getApps()[0]);i++)await new Promise(function(r){setTimeout(r,200)});
+      if(!app)return;
+      var db=F.getFirestore(app);
+      Au.onAuthStateChanged(Au.getAuth(app),function(u){
+        if(un){un();un=null}
+        if(!u)return;
+        un=F.onSnapshot(F.collection(db,'products'),function(s){
+          ids={};s.forEach(function(d){if(esconde(d.data().cat))ids[d.id]=1});apply();
+        },function(){});
+      });
+    }catch(e){}
+  })();
+})();
