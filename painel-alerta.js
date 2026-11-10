@@ -110,3 +110,39 @@ details.acc[open] .accb{animation:pe-in .25s ease both}
     }
   }
 })();
+
+/* Tema profissional do painel: azul-marinho e amarelo, igual à identidade da loja */
+(function(){
+  var css=`
+:root{--bg:#f2f4fa;--card:#fff;--ink:#0f2350;--mut:#5d6b8c;--line:#e1e6f2;--br:#10295a;--bri:#fff;--wn:#c62828;--wb:#fdeaea;--sh:0 1px 2px rgba(16,41,90,.06),0 8px 22px rgba(16,41,90,.08)}
+@media (prefers-color-scheme:dark){:root{--bg:#0a1430;--card:#122450;--ink:#eef2ff;--mut:#9fb0d6;--line:#243a6b;--br:#ffd21f;--bri:#10295a;--wn:#ff8a7e;--wb:#3a1b22;--sh:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.3)}}
+body{font-family:Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{max-width:none;margin:0;padding-top:20px;padding-bottom:22px;padding-left:max(16px,calc((100vw - 640px)/2 + 16px));padding-right:max(16px,calc((100vw - 640px)/2 + 16px));background:linear-gradient(135deg,#10295a,#1d4ba0);border-radius:0 0 28px 28px;box-shadow:0 10px 30px rgba(16,41,90,.25)}
+h1{font-family:"Alfa Slab One",Georgia,serif;font-weight:400;font-size:27px;color:#fff}
+#hoje{color:#ffd21f;font-weight:700;text-transform:capitalize;margin-top:2px}
+header .sec{background:rgba(255,255,255,.14);color:#fff;border:0}
+header input{color:var(--ink)}
+main{padding-top:18px}
+#busca{background:var(--card);box-shadow:var(--sh);border-radius:99px;padding-left:18px}
+.tot{position:relative;overflow:hidden;background:linear-gradient(135deg,#10295a,#2257b8);color:#fff;box-shadow:0 12px 28px rgba(16,41,90,.3)}
+.tot::after{content:"";position:absolute;right:-34px;top:-34px;width:130px;height:130px;border-radius:50%;background:rgba(255,210,31,.22)}
+.tot b{color:#ffd21f}
+.tile{border-top:4px solid #ffd21f}
+.row{border-left:4px solid #ffd21f}
+.badge{background:#ffd21f;color:#10295a}
+.pri{background:var(--br);color:var(--bri)}
+.sec{background:var(--bg);color:var(--ink)}
+#done{background:#ffd21f;color:#10295a;box-shadow:0 8px 18px rgba(255,210,31,.35)}
+.seg button[aria-pressed="true"]{box-shadow:0 4px 14px rgba(16,41,90,.3)}
+input:focus,select:focus{border-color:#ffd21f;box-shadow:0 0 0 4px rgba(255,210,31,.28)}
+nav button{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11px;font-weight:700;padding:8px 2px}
+nav button::before{font-size:19px;line-height:1.2;filter:grayscale(.6);opacity:.75;transition:filter .25s,opacity .25s,transform .25s}
+nav button[aria-current="page"]{background:var(--br);color:var(--bri)}
+nav button[aria-current="page"]::before{filter:none;opacity:1;transform:translateY(-1px) scale(1.1)}
+#n-vender::before{content:"\\1F6D2"}#n-estoque::before{content:"\\1F4E6"}#n-resumo::before{content:"\\1F4CA"}#n-fiado::before{content:"\\1F4D2"}#n-ped::before{content:"\\1F9FE"}
+`;
+  var st=document.createElement('style');st.id='pe-tema';st.textContent=css;document.head.appendChild(st);
+  var m=document.querySelector('meta[name="theme-color"]');if(m)m.content='#10295a';
+  var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Figtree:wght@500;700;800&display=swap';
+  document.head.appendChild(l);
+})();
