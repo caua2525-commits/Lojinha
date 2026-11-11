@@ -15,12 +15,31 @@
     if(Math.abs(exp-(+o.total||0))>0.01)return 'O total do pedido ('+R(o.total)+') não bate com os preços do catálogo ('+R(exp)+').';
     return '';
   }
-  function mark(){
+  function cod(id){var h=7;for(var i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))>>>0;return String(100+h%900)}
+var LB={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
+function conferir(){
+  var inp=document.getElementById('cc'),out=document.getElementById('ccr');if(!inp||!out)return;
+  var v=inp.value;out.textContent='';if(v.length<3)return;
+  function add(t,ok){var d=document.createElement('div');d.textContent=t;d.style.cssText='margin-top:8px;padding:10px 12px;border-radius:12px;font-weight:700;font-size:14px;'+(ok?'background:rgba(27,122,74,.14);border-left:4px solid #1b7a4a':'background:var(--wb);color:var(--wn);border-left:4px solid var(--wn)');out.appendChild(d)}
+  var m=Object.keys(ords).filter(function(k){return cod(k)===v}).map(function(k){return {id:k,o:ords[k]}}).sort(function(a,b){return b.o.t-a.o.t}).slice(0,3);
+  if(!m.length){add('Nenhum pedido com esse código.',false);return}
+  m.forEach(function(x){var o=x.o,ok=['novo','sep','pronto'].indexOf(o.st)>=0;
+    add((ok?'Confere: ':o.st==='ent'?'Já entregue: ':'Cancelado: ')+(o.name||'Cliente')+', '+R(o.total)+', '+(o.items||[]).map(function(i){return i.q+'x '+i.n}).join(', ')+' ('+LB[o.st]+', '+(o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):'fiado')+')',ok)});
+}
+(function(){
+  if(!list||!list.previousElementSibling)return;
+  var h=list.previousElementSibling,box=document.createElement('div');box.className='card';
+  box.innerHTML='<label>Conferir código de retirada<input id="cc" inputmode="numeric" maxlength="3" placeholder="3 números do cliente" autocomplete="off"></label><div id="ccr"></div>';
+  h.parentNode.insertBefore(box,h);
+  box.querySelector('input').addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,3);conferir()});
+})();
+function mark(){
     if(!list)return;
     list.querySelectorAll('.row').forEach(function(card){
       if(card.querySelector('.alerta'))return;
       var b=card.querySelector('button[data-id]');if(!b)return;
       var o=ords[b.dataset.id];if(!o||['novo','sep','pronto'].indexOf(o.st)<0)return;
+      if(!card.querySelector('.cod3')){var rh=card.querySelector('.rh'),c=document.createElement('span');c.className='cod3';c.textContent='Código '+cod(b.dataset.id);c.style.cssText='background:#ffd21f;color:#10295a;border-radius:99px;padding:3px 12px;font:800 14px ui-monospace,Menlo,monospace;letter-spacing:.08em;white-space:nowrap';if(rh)rh.insertBefore(c,rh.lastElementChild)}
       var t=problema(o);if(!t)return;
       var d=document.createElement('div');d.className='alerta';
       d.style.cssText='background:var(--wb);color:var(--wn);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:13px;font-weight:700';
@@ -38,7 +57,7 @@
       Au.onAuthStateChanged(Au.getAuth(app),function(u){
         uns.forEach(function(f){f()});uns=[];ords={};
         if(!u)return;
-        uns.push(F.onSnapshot(F.collection(db,'orders'),function(s){ords={};s.forEach(function(d){ords[d.id]=d.data()});mark()},function(){}));
+        uns.push(F.onSnapshot(F.collection(db,'orders'),function(s){ords={};s.forEach(function(d){ords[d.id]=d.data()});mark();conferir()},function(){}));
       });
     }catch(e){}
   })();

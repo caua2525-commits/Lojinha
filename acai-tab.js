@@ -71,6 +71,15 @@
       p.after(b);
     });
   }
+function cod(id){var h=7;for(var i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))>>>0;return String(100+h%900)}
+  var box=null,LBL={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar'};
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function cods(){
+    var sec=document.getElementById('sec-ped');if(!sec)return;
+    if(!box){box=document.createElement('div');box.id='cods';sec.insertBefore(box,sec.firstChild)}
+    var act=Object.keys(ords).map(function(k){return {id:k,o:ords[k]}}).filter(function(x){return LBL[x.o.st]}).sort(function(a,b){return b.o.t-a.o.t});
+    box.innerHTML=act.map(function(x){var o=x.o;return '<div class="card" style="text-align:center"><div class="mut">Código de retirada</div><div style="font:400 46px/1.1 \'Alfa Slab One\',Georgia,serif;color:var(--acc);letter-spacing:.08em">'+cod(x.id)+'</div><div class="mut">'+esc(LBL[o.st])+', '+R(o.total)+'</div><div class="mut">'+(o.items||[]).map(function(i){return i.q+'x '+esc(i.n)}).join(', ')+'</div><div class="mut">Diga este número na hora de retirar.</div></div>'}).join('');
+  }
   if(list)new MutationObserver(addBtns).observe(list,{childList:true});
   document.addEventListener('click',function(e){
     var b=e.target.closest('[data-ja]');if(!b)return;
@@ -88,10 +97,10 @@
       if(!app)return;
       var db=F.getFirestore(app);
       Au.onAuthStateChanged(Au.getAuth(app),function(u){
-        uns.forEach(function(f){f()});uns=[];ords={};
+        uns.forEach(function(f){f()});uns=[];ords={};cods();
         if(!u)return;
         uns.push(F.onSnapshot(F.doc(db,'config','loja'),function(s){cfg=s.data()||{}},function(){}));
-        uns.push(F.onSnapshot(F.query(F.collection(db,'orders'),F.where('uid','==',u.uid)),function(s){ords={};s.forEach(function(d){ords[d.id]=d.data()})},function(){}));
+        uns.push(F.onSnapshot(F.query(F.collection(db,'orders'),F.where('uid','==',u.uid)),function(s){ords={};s.forEach(function(d){ords[d.id]=d.data()});cods()},function(){}));
       });
     }catch(e){}
   })();

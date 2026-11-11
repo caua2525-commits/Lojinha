@@ -36,6 +36,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .pill.pronto{background:#c5ecd3;color:#0f5a33}
 .rh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
 textarea{width:100%;margin-top:8px;font:12px/1.3 ui-monospace,Menlo,monospace;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:8px;resize:none}
+.cod{margin:6px 0;font-weight:800;font-size:14px}.cod b{display:inline-block;margin-left:6px;padding:2px 12px;border-radius:10px;background:var(--ink);color:var(--bg);font:800 22px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.12em}
 #msg:not(:empty){position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:9;max-width:536px;margin:0 auto;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;font-weight:700}
 </style>
 </head>
@@ -80,6 +81,7 @@ function clearStore(items){
     items.forEach(i=>{b.dataset.id=i.p;for(let k=0;k<i.q;k++)b.click()});b.remove()}catch(e){}
 }
 function goPed(){try{const t=parent.document.querySelector('#tabs button[data-v="ped"]');if(t)t.click()}catch(e){}}
+const cod=id=>{let h=7;for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))>>>0;return String(100+h%900)};
 const cupTot=c=>(P(c.b)?P(c.b).price:0)+c.i.reduce((s,id)=>s+(P(id)?P(id).price:0),0);
 function msg(t){let m=$('#msg');try{if(parent!==window){const pm=parent.document.getElementById('msg');if(pm)m=pm}}catch(e){}m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(e.code==='permission-denied'?'Sem permissão para essa ação.':'Erro: '+(e.code||e.message));
@@ -118,7 +120,7 @@ function render(){
   $('#go').textContent='Fazer pedido: '+R(tot);
   const isA=i=>{const p=P(i.p),c=p?nz(p.cat):'';return c==='acai'||c==='ingredientes'||c.indexOf('cobertura')===0};
   const ac=orders.filter(o=>ST[o.st]&&(o.items||[]).some(isA)).sort((a,b)=>b.t-a.t);
-  $('#orders').innerHTML=ac.map(o=>`<div class="card"><div class="rh"><span class="pill ${o.st}">${ST[o.st]}</span><b>${R(o.total)}</b></div><div class="mut">${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div>`
+  $('#orders').innerHTML=ac.map(o=>`<div class="card"><div class="rh"><span class="pill ${o.st}">${ST[o.st]}</span><b>${R(o.total)}</b></div><div class="cod">Código de retirada <b>${cod(o.id)}</b></div><div class="mut">${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div>`
     +(o.pay==='pix'&&!o.paid?(cfg.pix?`<div class="mut" style="margin-top:8px">Pague ${R(o.total)} por Pix: copie o código e cole no app do banco, em Pix Copia e Cola.</div><textarea readonly rows="4" onfocus="this.select()">${pixCode(o)}</textarea><button class="sec" data-c="${o.id}">Copiar código Pix</button><button class="pri" data-p="${o.id}"${told[o.id]?' disabled':''}>${told[o.id]?'Aviso enviado. Aguarde a confirmação':'Já paguei'}</button>`:'<div class="mut">A loja ainda não cadastrou a chave Pix. Fale com a loja.</div>'):'<div class="mut">Pagamento confirmado pela loja.</div>')+'</div>').join('')||'<p class="mut">Nenhum pedido em andamento.</p>';
   $('#nt').hidden=!(window.Notification&&Notification.permission==='default');
 }
