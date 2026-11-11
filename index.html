@@ -10,7 +10,6 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Minha Lojinha</title>
-<script src="painel-alerta.js" defer></script>
 <style>
 :root{--bg:#eef3f0;--card:#fff;--ink:#14231c;--mut:#5b6b63;--line:#d5e0da;--br:#0f7b4f;--bri:#fff;--wn:#b8341f;--wb:#fbe7e3;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1a15;--card:#17261f;--ink:#e8f1ec;--mut:#93a89d;--line:#27382f;--br:#3dbe85;--bri:#08140e;--wn:#ff8a75;--wb:#3a1e19;color-scheme:dark}}
@@ -137,7 +136,7 @@ details.card summary{cursor:pointer}
 <input id="oe" type="email" placeholder="E-mail do dono" autocomplete="email"><input id="op" type="password" placeholder="Senha" autocomplete="current-password">
 <div class="two"><button class="pri" data-a="olog">Entrar</button><button class="sec" data-a="oreg">Criar conta</button></div></div>
 <div id="ologged" hidden>
-<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 12</div>
+<div class="card add"><b>Dados da loja online</b><div class="mut" id="owho"></div><div class="mut" id="ostat"></div><div class="mut">Versão do app: 13</div>
 <div class="mut" id="oshop"></div>
 <label class="chk"><input type="checkbox" id="oopen"> Aceitar pedidos agora</label>
 <label class="chk"><input type="checkbox" id="oauto"> Abrir e fechar sozinho nos horários abaixo</label>
@@ -420,7 +419,7 @@ import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOu
 import {getFirestore,collection,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
 const auth=getAuth(app),db=getFirestore(app);
-let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={},cerr='',bkT=null,bkDays=null,bkt=0,rarm=false,bkMain='';
+let me=null,orders=[],cust={},pub=null,timer=null,unsubs=[],seen=null,ocfg={},cerr='',bkT=null,bkDays=null,bkt=0,rarm=false,bkMain='',cin={},skipArm=null;
 const ST={novo:'Novo',sep:'Separado',pronto:'Pronto',ent:'Entregue',canc:'Cancelado'};
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão. Confira as regras do Firestore e o e-mail do dono.'})[e.code]||'Erro: '+(e.code||e.message));
 const hm=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;return (g('hour')%24)*60+g('minute')};
@@ -428,6 +427,7 @@ const mins=s=>{const [h,m]=String(s||'0:0').split(':');return +h*60+(+m||0)};
 const aberta=c=>{if(c.open===false)return false;if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
 const btn=(a,v,t,c,id)=>`<button class="${c}" data-a="${a}" data-id="${id}"${v?` data-v="${v}"`:''}>${t}</button>`;
 function ui2(){$('#oauth').hidden=!!me;$('#ologged').hidden=!me;$('#owho').textContent=me?'Conectado como '+me.email:'';$('#ostat').textContent=me?'O que os clientes veem agora. Pix: '+(ocfg.pix?'cadastrado':'FALTA cadastrar')+'. Avisos de pedido no celular: '+(ocfg.ntfy?'código salvo':'FALTA gerar o código')+'.':'';$('#oshop').textContent=me?'Para os clientes a loja está '+(aberta(ocfg)?'aberta':'fechada')+' agora.':''}
+const codeIn=o=>o.code&&(o.st==='sep'||o.st==='pronto')?`<input data-cin="${o.id}" inputmode="numeric" maxlength="3" placeholder="Código de retirada do cliente (3 números)" value="${esc(cin[o.id]||'')}" autocomplete="off">`:'';
 window.renderPed=()=>{
   const ac=orders.filter(o=>['novo','sep','pronto'].includes(o.st)).sort((a,b)=>a.t-b.t),
     ol=orders.filter(o=>o.st==='ent'||o.st==='canc').sort((a,b)=>b.t-a.t).slice(0,8),nw=ac.filter(o=>o.st==='novo').length;
@@ -437,9 +437,10 @@ window.renderPed=()=>{
     if(o.st==='novo')x.push(btn('ost','sep','Separar','pri',o.id));
     if(o.st==='sep')x.push(btn('ost','pronto','Pronto','pri',o.id));
     if(o.st==='sep'||o.st==='pronto')x.push(btn('ost','ent','Entregue','pri',o.id));
+    if(o.code&&(o.st==='sep'||o.st==='pronto'))x.push(btn('oskip','',skipArm===o.id?'Confirmar: entregar sem código':'Entregar sem código','sec',o.id));
     if(['novo','sep','pronto'].includes(o.st))x.push(btn('ost','canc','Cancelar','sec',o.id));
     return x.join('')};
-  const card=o=>`<div class="row"><div class="rh"><b class="nmi">${esc(o.name)}</b><b>${R(o.total)}</b></div><div class="mut">${hh(o.t)}, ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):'Fiado'}, ${ST[o.st]||o.st}</div><div class="two">${bs(o)}</div></div>`;
+  const card=o=>`<div class="row"><div class="rh"><b class="nmi">${esc(o.name)}</b><b>${R(o.total)}</b></div><div class="mut">${hh(o.t)}, ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):'Fiado'}, ${ST[o.st]||o.st}</div>${codeIn(o)}<div class="two">${bs(o)}</div></div>`;
   $('#plist').innerHTML=(ac.concat(ol).map(card).join(''))||'<p class="mut">Nenhum pedido ainda.</p>';
   $('#clist').innerHTML=Object.entries(cust).map(([id,c])=>`<div class="row"><div class="rh"><b class="nmi">${esc(c.name)}</b><b>${R(bal(id))}</b></div><div class="mut">${esc(c.email||'')}</div><div class="two"><input id="l-${id}" inputmode="decimal" placeholder="Limite (R$)" value="${c.limit||''}">${btn('olim','','Salvar limite','sec',id)}</div>${btn('ofia','',c.fiadoOk?'Bloquear fiado':'Liberar fiado',c.fiadoOk?'sec':'pri',id)}</div>`).join('')||(cerr?'<p class="mut">Não consegui carregar os clientes: '+cerr+'.</p>':'<p class="mut">Nenhum cliente apareceu ainda. Quem criou a conta antes das últimas atualizações aparece depois de abrir o app da loja uma vez.</p>');
 };
@@ -520,12 +521,16 @@ document.addEventListener('click',async e=>{
     else if(a==='bkrestore'){if(!rarm){rarm=true;b.textContent='Confirmar: troca os dados deste celular';setTimeout(()=>{rarm=false;b.textContent='Restaurar da nuvem'},6000);return}rarm=false;b.textContent='Restaurar da nuvem';await restore()}
     else if(a==='oshare')send('Peça pelo app da loja: '+location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'loja.html');
     else if(a==='opix'&&o){await updateDoc(doc(db,'orders',id),{paid:true});msg('Pix marcado como recebido.')}
-    else if(a==='ost'&&o)await trans(o,b.dataset.v);
+    else if(a==='ost'&&o){const v=b.dataset.v;
+      if(v==='ent'&&o.code&&(cin[id]||'').trim()!==String(o.code)){msg(cin[id]?'Código incorreto. Peça ao cliente o código de 3 números do pedido.':'Digite o código de retirada do cliente antes de entregar.');return}
+      await trans(o,v);delete cin[id]}
+    else if(a==='oskip'&&o){if(skipArm!==id){skipArm=id;setTimeout(()=>{if(skipArm===id){skipArm=null;render()}},6000);render();return}skipArm=null;await trans(o,'ent');delete cin[id]}
     else if(a==='ofia'&&cust[id])await updateDoc(doc(db,'customers',id),{fiadoOk:!cust[id].fiadoOk});
     else if(a==='olim'){const v=num($('#l-'+id).value);if(isNaN(v)){msg('Informe o limite em reais.');return}await updateDoc(doc(db,'customers',id),{limit:v});msg('Limite salvo.')}
   }catch(er){erro(er)}
 });
 document.addEventListener('change',async e=>{if(['oopen','oauto','ofrom','oto'].includes(e.target.id)&&me){try{await saveCfg();msg('Status e horário da loja salvos.')}catch(er){erro(er)}}});
+document.addEventListener('input',e=>{const k=e.target.dataset.cin;if(k)cin[k]=e.target.value.replace(/\D/g,'')});
 onAuthStateChanged(auth,async u=>{
   unsubs.forEach(f=>f());unsubs=[];me=u;pub=null;seen=null;ui2();
   if(!u){orders=[];cust={};render();return}
