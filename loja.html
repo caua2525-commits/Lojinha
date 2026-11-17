@@ -148,7 +148,9 @@ h1{font-size:28px}.sub{font-size:13px;margin-top:4px}
 <div id="scrim" data-a="sheet" hidden></div>
 <div id="cart" role="dialog" aria-label="Seu pedido"><div class="sh"><span>Seu pedido</span><button class="x" data-a="sheet" aria-label="Fechar">×</button></div><div id="citems"></div>
 <label>Observação (opcional)<input id="obs" maxlength="140" placeholder="Ex.: sem granola, calda à parte" autocomplete="off"></label>
-<label>Pagamento<select id="pay"><option value="pix">Pix</option><option value="fia" id="ofia">Fiado</option></select></label>
+<label>Retirada<select id="ret"><option value="">O quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option></select></label>
+<label>Pagamento<select id="pay"><option value="pix">Pix</option><option value="din">Dinheiro na retirada</option><option value="car">Cartão na retirada</option><option value="fia" id="ofia">Fiado</option></select></label>
+<input id="trocopara" inputmode="decimal" placeholder="Troco para quanto? (opcional)" autocomplete="off" hidden>
 <div class="mut" id="pixnote">Depois de enviar o pedido, o código Pix aparece em Meus pedidos.</div>
 <button class="pri" data-a="order">Fazer pedido: <span id="ctot"></span></button></div>
 <button id="bar" data-a="sheet" hidden><span id="bn"></span><b id="bt"></b><span class="go">Ver pedido</span></button>
@@ -189,7 +191,7 @@ const aberta=c=>{if(c.open===false)return false;if(!c.auto)return true;const n=h
 const PR=v=>{const [i,c]=(+v||0).toFixed(2).split('.');return `<span class="price" aria-label="${R(v)}"><span class="rs">R$</span><span class="pi">${(+i).toLocaleString('pt-BR')}</span><span class="pc">,${c}</span></span>`};
 function ocard(o){
   const pix=o.pay==='pix'&&!o.paid&&o.st!=='canc';
-  return `<div class="row"><div class="rh"><span class="pill s-${o.st}">${ST[o.st]||o.st}</span><b>${R(o.total)}</b></div><div class="mut">${new Date(o.t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}: ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado pela loja':'Pagamento: Pix'):'Pagamento: fiado'}</div>${o.code&&['novo','sep','pronto'].includes(o.st)?`<div class="codigo"><span>Código de retirada</span><b>${o.code}</b><small>Diga este número ao retirar. Não compartilhe com ninguém.</small></div>`:''}`
+  return `<div class="row"><div class="rh"><span class="pill s-${o.st}">${ST[o.st]||o.st}</span><b>${R(o.total)}</b></div><div class="mut">${new Date(o.t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}: ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado pela loja':'Pagamento: Pix'):o.pay==='din'?'Pagamento: dinheiro na retirada':o.pay==='car'?'Pagamento: cartão na retirada':'Pagamento: fiado'}</div>${o.code&&['novo','sep','pronto'].includes(o.st)?`<div class="codigo"><span>Código de retirada</span><b>${o.code}</b><small>Diga este número ao retirar. Não compartilhe com ninguém.</small></div>`:''}`
   +(pix?(cfg.pix?`<div class="mut">Pague ${R(o.total)} por Pix: copie o código abaixo e cole no app do seu banco, em Pix Copia e Cola. A loja confirma quando o pagamento chegar.</div><textarea readonly rows="4" id="pc-${o.id}" onfocus="this.select()">${pixCode(o)}</textarea><button class="pri" data-a="pix" data-id="${o.id}">Copiar código Pix</button>`:'<div class="mut">A loja ainda não cadastrou a chave Pix. Fale com a loja.</div>'):'')
   +(o.st==='novo'&&cfg.wa?`<button class="sec" data-a="zap" data-id="${o.id}">Avisar a loja no WhatsApp</button>`:'')
   +(o.st==='novo'?`<button class="del" data-a="ocanc" data-id="${o.id}">Cancelar pedido</button>`:'')+`</div>`;
@@ -209,7 +211,7 @@ function render(){
   const nq=ids.reduce((s,id)=>s+cart[id],0);$('#bar').hidden=!ids.length||sheet||!open;$('#bn').textContent=nq+(nq==1?' item':' itens');$('#bt').textContent=R(tot);
   $('#citems').innerHTML=ids.map(id=>`<div class="ci"><span>${esc(P(id).name)}</span><span class="step"><button data-a="cm" data-id="${id}" aria-label="Tirar 1">−</button><b>${cart[id]}</b><button data-a="add" data-id="${id}" aria-label="Pôr 1">+</button></span><b>${R(P(id).price*cart[id])}</b></div>`).join('');
   $('#ctot').textContent=R(tot);
-  $('#ofia').hidden=$('#ofia').disabled=!cust.fiadoOk;if(!cust.fiadoOk)$('#pay').value='pix';
+  $('#ofia').hidden=$('#ofia').disabled=!cust.fiadoOk;if(!cust.fiadoOk&&$('#pay').value==='fia')$('#pay').value='pix';
   $('#olist').innerHTML=orders.map(ocard).join('')||'<p class="mut">Você ainda não fez pedidos. Escolha produtos na aba Loja.</p>';
   $('#fiado').innerHTML=cust.fiadoOk?`<div class="caderno"><span class="mut">Caderninho do fiado</span><span class="big">${R(cust.balance||0)}</span><span class="mut">Limite de ${R(cust.limit||0)}. Ainda dá para pegar ${R(Math.max(0,(cust.limit||0)-(cust.balance||0)))}.</span></div>`:`<div class="card"><b>Fiado</b><p class="mut">O fiado ainda não foi liberado para você. Peça à loja se quiser comprar fiado.</p></div>`;
   const na=orders.filter(o=>['novo','sep','pronto'].includes(o.st)).length;$('#pn').hidden=!na;$('#pn').textContent=na;
@@ -221,8 +223,8 @@ async function order(){
   const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900);
   const items=ids.map(id=>({p:id,n:P(id).name,q:cart[id],pr:P(id).price})),total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,pay=$('#pay').value;
   if(pay==='fia'&&(cust.balance||0)+total>(cust.limit||0)){msg('Esse pedido passa do seu limite de fiado.');return}
-  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,code,obs:($('#obs').value||'').trim().slice(0,140),t:Date.now()});
-  cart={};sheet=false;$('#obs').value='';render();let ok=false;
+  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,code,obs:($('#obs').value||'').trim().slice(0,140),ret:$('#ret').value,troco:pay==='din'?(parseFloat(String($('#trocopara').value).replace(',','.'))||0):0,t:Date.now()});
+  cart={};sheet=false;$('#obs').value='';$('#ret').value='';$('#trocopara').value='';render();let ok=false;
   if(cfg.ntfy)fetch('https://ntfy.sh/'+encodeURIComponent(cfg.ntfy)+'/publish?title='+encodeURIComponent('Novo pedido')+'&priority=high&tags=shopping_cart&message='+encodeURIComponent(items.reduce((s,i)=>s+i.q,0)+' item(ns), '+R(total)+'. Abra o app para ver.'),{mode:'no-cors'}).catch(()=>{});
   if(pay==='pix'&&cfg.pix){try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}}
   msg((ok?'Pedido enviado! Código Pix copiado: cole no app do seu banco. ':'Pedido enviado! ')+'Seu código de retirada: '+code+'. Guarde-o.');

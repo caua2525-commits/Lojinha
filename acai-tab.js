@@ -77,7 +77,27 @@ var prep=0,pbox=null,pn=null;
     if(sec){if(!pbox){pbox=document.createElement('div');pbox.className='mut';pbox.style.cssText='margin:6px 0 10px;font-weight:700';sec.insertBefore(pbox,sec.firstChild)}pbox.hidden=!prep;pbox.textContent=t}
     if(ci){if(!pn){pn=document.createElement('div');pn.className='mut';ci.after(pn)}pn.hidden=!prep;pn.textContent=t}
   }
-  if(list)new MutationObserver(addBtns).observe(list,{childList:true});
+  function press(a,id,n){var b=document.createElement('button');b.dataset.a=a;b.dataset.id=id;b.hidden=true;document.body.appendChild(b);for(var k=0;k<n;k++)b.click();b.remove()}
+  function again(){
+    if(!list)return;
+    var arr=Object.keys(ords).map(function(k){var o=ords[k];o.id=k;return o}).sort(function(a,b){return b.t-a.t});
+    var rows=list.querySelectorAll(':scope>.row');
+    if(!rows.length||rows.length!==arr.length)return;
+    rows.forEach(function(r,i){
+      var o=arr[i];if(['ent','canc'].indexOf(o.st)<0||r.querySelector('[data-again]'))return;
+      var t=r.querySelector('.rh b');if(!t||t.textContent!==R(o.total))return;
+      var b=document.createElement('button');b.className='sec';b.dataset.again=o.id;b.style.cssText='width:100%;margin-top:8px';b.textContent='Pedir de novo';r.appendChild(b);
+    });
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-again]');if(!b)return;
+    var o=ords[b.dataset.again];if(!o)return;
+    (o.items||[]).forEach(function(i){press('add',i.p,+i.q||0)});
+    var t=document.querySelector('#tabs button[data-v="loja"]');if(t)t.click();
+    var bar=document.getElementById('bar');if(bar&&!bar.hidden)bar.click();
+  });
+  document.addEventListener('change',function(e){if(e.target.id==='pay'){var t=document.getElementById('trocopara');if(t)t.hidden=e.target.value!=='din'}});
+  if(list)new MutationObserver(function(){addBtns();again()}).observe(list,{childList:true});
   document.addEventListener('click',function(e){
     var b=e.target.closest('[data-ja]');if(!b)return;
     var id=b.dataset.ja,o=ords[id]||{};
@@ -97,7 +117,7 @@ var prep=0,pbox=null,pn=null;
         uns.forEach(function(f){f()});uns=[];ords={};prep=0;avisos();
         if(!u)return;
         uns.push(F.onSnapshot(F.doc(db,'config','loja'),function(s){cfg=s.data()||{}},function(){}));
-        uns.push(F.onSnapshot(F.query(F.collection(db,'orders'),F.where('uid','==',u.uid)),function(s){ords={};s.forEach(function(d){ords[d.id]=d.data()})},function(){}));
+        uns.push(F.onSnapshot(F.query(F.collection(db,'orders'),F.where('uid','==',u.uid)),function(s){ords={};s.forEach(function(d){ords[d.id]=d.data()});again()},function(){}));
         uns.push(F.onSnapshot(F.doc(db,'config','prep'),function(s){prep=+((s.data()||{}).min)||0;avisos()},function(){}));
       });
     }catch(e){}

@@ -50,7 +50,7 @@ textarea{width:100%;margin-top:8px;font:12px/1.3 ui-monospace,Menlo,monospace;ba
 <h2>Escolha o açaí</h2>
 <div id="bases"></div>
 <div id="ingw" class="card" hidden><b>Escolha os ingredientes</b><div id="ings"></div><b id="cth" style="display:block;margin-top:16px" hidden>Escolha a cobertura</b><div id="cobs"></div><button class="pri" id="addc">Adicionar ao pedido</button></div>
-<div id="cartw" class="card" hidden><b>Seu pedido</b><div id="cups"></div><input id="obs2" maxlength="140" placeholder="Observação (opcional): sem granola, calda à parte" autocomplete="off" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button class="pri" id="go"></button><div class="mut" style="margin-top:8px">O pagamento é por Pix. O código aparece logo depois de enviar o pedido.</div></div>
+<div id="cartw" class="card" hidden><b>Seu pedido</b><div id="cups"></div><select id="ret2" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><option value="">Retirada: o quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option></select><input id="obs2" maxlength="140" placeholder="Observação (opcional): sem granola, calda à parte" autocomplete="off" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button class="pri" id="go"></button><div class="mut" style="margin-top:8px">O pagamento é por Pix. O código aparece logo depois de enviar o pedido.</div></div>
 <h2>Pedidos em andamento</h2>
 <div id="orders"></div>
 <button class="sec" id="nt" hidden>Ativar avisos neste celular</button>
@@ -139,11 +139,11 @@ async function order(fromParent){
   cups.forEach((c,k)=>{const s=multi?' (copo '+(k+1)+')':'',b=P(c.b);items.push({p:b.id,n:b.name+s,q:1,pr:b.price});c.i.forEach(id=>{const g=P(id);items.push({p:id,n:'+ '+g.name+s,q:1,pr:g.price})})});
   store.forEach(i=>items.push(i));
   const total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100;
-  const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900),obs=(($('#obs2').value||'').trim()||(()=>{try{return parent.document.getElementById('obs').value.trim()}catch(e){return ''}})()).slice(0,140);
-  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name,items,total,pay:'pix',st:'novo',paid:false,code,obs,t:Date.now()});
+  const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900),obs=(($('#obs2').value||'').trim()||(()=>{try{return parent.document.getElementById('obs').value.trim()}catch(e){return ''}})()).slice(0,140),ret=$('#ret2').value||(()=>{try{return parent.document.getElementById('ret').value}catch(e){return ''}})();
+  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name,items,total,pay:'pix',st:'novo',paid:false,code,obs,ret,t:Date.now()});
   ntfy('Novo pedido de açaí','O cliente '+name+' fez um pedido de '+R(total)+'. Abra o app para ver.');
   let ok=false;try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}
-  cups=[];base=null;pick=new Set();clearStore(store);$('#obs2').value='';try{parent.document.getElementById('obs').value=''}catch(e){}render();if(fromParent)goPed();
+  cups=[];base=null;pick=new Set();clearStore(store);$('#obs2').value='';$('#ret2').value='';try{parent.document.getElementById('obs').value='';parent.document.getElementById('ret').value=''}catch(e){}render();if(fromParent)goPed();
   msg((ok?'Pedido enviado! Código Pix copiado: cole no app do banco. ':'Pedido enviado! Copie o código Pix abaixo. ')+'Seu código de retirada: '+code+'. Guarde-o.');
 }
 document.addEventListener('click',async e=>{

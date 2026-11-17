@@ -23,7 +23,7 @@ function conferir(){
   var m=Object.keys(ords).filter(function(k){return String(ords[k].code||'')===v}).map(function(k){return {id:k,o:ords[k]}}).sort(function(a,b){return b.o.t-a.o.t}).slice(0,3);
   if(!m.length){add('Nenhum pedido com esse código.',false);return}
   m.forEach(function(x){var o=x.o,ok=['novo','sep','pronto'].indexOf(o.st)>=0;
-    add((ok?'Confere: ':o.st==='ent'?'Já entregue: ':'Cancelado: ')+(o.name||'Cliente')+', '+R(o.total)+', '+(o.items||[]).map(function(i){return i.q+'x '+i.n}).join(', ')+' ('+LB[o.st]+', '+(o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):'fiado')+')',ok)});
+    add((ok?'Confere: ':o.st==='ent'?'Já entregue: ':'Cancelado: ')+(o.name||'Cliente')+', '+R(o.total)+', '+(o.items||[]).map(function(i){return i.q+'x '+i.n}).join(', ')+' ('+LB[o.st]+', '+(o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):o.pay==='din'?'dinheiro na retirada':o.pay==='car'?'cartão na retirada':'fiado')+')',ok)});
 }
 (function(){
   if(!list||!list.previousElementSibling)return;
@@ -39,6 +39,8 @@ function mark(){
       var b=card.querySelector('button[data-id]');if(!b)return;
       var o=ords[b.dataset.id];if(!o||['novo','sep','pronto'].indexOf(o.st)<0)return;
       if(o.obs&&!card.querySelector('.obs3')){var rh=card.querySelector('.rh'),ob=document.createElement('div');ob.className='obs3';ob.textContent='Obs: '+o.obs;ob.style.cssText='background:#fff3b0;color:#5a4000;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:14px;font-weight:700';if(rh)rh.after(ob)}
+      var ex=[];if(o.ret)ex.push('Retirada: '+o.ret);if(o.pay==='din'&&o.troco>o.total)ex.push('Troco para '+R(o.troco)+': devolver '+R(o.troco-o.total));
+      if(ex.length&&!card.querySelector('.ret3')){var rh2=card.querySelector('.rh'),r3=document.createElement('div');r3.className='ret3';r3.textContent=ex.join(' | ');r3.style.cssText='background:#e3ecff;color:#10295a;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:14px;font-weight:700';if(rh2)rh2.after(r3)}
       var t=problema(o);if(!t)return;
       var d=document.createElement('div');d.className='alerta';
       d.style.cssText='background:var(--wb);color:var(--wn);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:13px;font-weight:700';

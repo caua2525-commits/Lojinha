@@ -441,7 +441,7 @@ window.renderPed=()=>{
     if(o.code&&(o.st==='sep'||o.st==='pronto'))x.push(btn('oskip','',skipArm===o.id?'Confirmar: entregar sem código':'Entregar sem código','sec',o.id));
     if(['novo','sep','pronto'].includes(o.st))x.push(btn('ost','canc','Cancelar','sec',o.id));
     return x.join('')};
-  const card=o=>`<div class="row"><div class="rh"><b class="nmi">${esc(o.name)}</b><b>${R(o.total)}</b></div><div class="mut">${hh(o.t)}, ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):'Fiado'}, ${ST[o.st]||o.st}</div>${codeIn(o)}<div class="two">${bs(o)}</div></div>`;
+  const card=o=>`<div class="row"><div class="rh"><b class="nmi">${esc(o.name)}</b><b>${R(o.total)}</b></div><div class="mut">${hh(o.t)}, ${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div><div class="mut">${o.pay==='pix'?(o.paid?'Pix confirmado':'Pix a confirmar'):o.pay==='din'?'Dinheiro na retirada':o.pay==='car'?'Cartão na retirada':'Fiado'}, ${ST[o.st]||o.st}</div>${codeIn(o)}<div class="two">${bs(o)}</div></div>`;
   $('#plist').innerHTML=(ac.concat(ol).map(card).join(''))||'<p class="mut">Nenhum pedido ainda.</p>';
   $('#clist').innerHTML=Object.entries(cust).map(([id,c])=>`<div class="row"><div class="rh"><b class="nmi">${esc(c.name)}</b><b>${R(bal(id))}</b></div><div class="mut">${esc(c.email||'')}</div><div class="two"><input id="l-${id}" inputmode="decimal" placeholder="Limite (R$)" value="${c.limit||''}">${btn('olim','','Salvar limite','sec',id)}</div>${btn('ofia','',c.fiadoOk?'Bloquear fiado':'Liberar fiado',c.fiadoOk?'sec':'pri',id)}</div>`).join('')||(cerr?'<p class="mut">Não consegui carregar os clientes: '+cerr+'.</p>':'<p class="mut">Nenhum cliente apareceu ainda. Quem criou a conta antes das últimas atualizações aparece depois de abrir o app da loja uma vez.</p>');
 };
@@ -499,7 +499,7 @@ async function trans(o,v){
     const tot=rd(items.reduce((s,i)=>s+i.pr*i.q,0)),sid='o'+o.id;
     if(o.pay==='fia'&&cust[o.uid]&&bal(o.uid)+tot>(cust[o.uid].limit||0)){msg('Passa do limite de fiado deste cliente. Aumente o limite em Clientes do app.');return}
     if(!S.sales.some(s=>s.id===sid)){
-      S.sales.push({id:sid,t:Date.now(),d:today(),pay:o.pay==='fia'?'fia':'pix',tot,rec:tot,cid:o.pay==='fia'?o.uid:undefined,items});
+      S.sales.push({id:sid,t:Date.now(),d:today(),pay:o.pay==='fia'?'fia':(o.pay==='din'||o.pay==='car'?o.pay:'pix'),tot,rec:tot,cid:o.pay==='fia'?o.uid:undefined,items});
       if(o.pay==='fia'){if(!S.clients.some(c=>c.id===o.uid))S.clients.push({id:o.uid,name:o.name});S.led.push({id:uid(),cid:o.uid,t:Date.now(),d:today(),sid,amt:tot})}
       save();
     }
