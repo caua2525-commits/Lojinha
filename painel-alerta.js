@@ -165,3 +165,44 @@ nav button[aria-current="page"]::before{filter:none;opacity:1;transform:translat
   var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Figtree:wght@500;700;800&display=swap';
   document.head.appendChild(l);
 })();
+
+/* Resumo: itens mais e menos vendidos na semana */
+(function(){
+  var sec=document.getElementById('v-resumo'),res=document.getElementById('res');
+  if(!sec)return;
+  var card=document.createElement('div');card.className='card';card.id='semana';
+  sec.insertBefore(card,sec.firstChild);
+  var nz=function(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()};
+  var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  var extra=function(p){var c=p?nz(p.cat):'';return c==='ingredientes'||c.indexOf('cobertura')===0};
+  function linha(n,q,max,cor){
+    var w=max?Math.max(q>0?4:0,q/max*100):0;
+    return '<div style="margin:10px 0 2px"><div style="display:flex;justify-content:space-between;gap:10px;font-weight:700"><span>'+esc(n)+'</span><span>'+q+' un</span></div><div style="height:6px;border-radius:99px;background:var(--bg);margin-top:5px"><div style="height:6px;border-radius:99px;width:'+w+'%;background:'+cor+';transition:width .5s ease"></div></div></div>';
+  }
+  function bloco(t,arr,max,cor){
+    if(!arr.length)return '';
+    return '<div class="mut" style="margin-top:16px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">'+t+'</div>'+arr.map(function(x){return linha(x.n,x.q,max,cor)}).join('');
+  }
+  function pintar(){
+    var S2;try{S2=S}catch(e){return}
+    var ds=[];for(var i=0;i<7;i++)ds.push(new Date(Date.now()-i*864e5).toLocaleDateString('sv-SE'));
+    var m={};
+    function add(id,n,q){var x=m[id]||(m[id]={n:n,q:0});x.q+=q}
+    (S2.sales||[]).forEach(function(s){if(ds.indexOf(s.d)<0)return;(s.items||[]).forEach(function(i){add(i.p,i.n,+i.q||0)})});
+    ds.forEach(function(d){var o=(S2.days||{})[d]||{};Object.keys(o).forEach(function(id){add(id,o[id].n,+o[id].q||0)})});
+    var prods=S2.products||[],byId={};prods.forEach(function(p){byId[p.id]=p});
+    var normais=[],extras=[];
+    Object.keys(m).forEach(function(id){var p=byId[id],x={id:id,n:p?p.name:m[id].n,q:m[id].q};(extra(p)?extras:normais).push(x)});
+    prods.forEach(function(p){if(!m[p.id]&&!extra(p))normais.push({id:p.id,n:p.name,q:0})});
+    var top=normais.filter(function(x){return x.q>0}).sort(function(a,b){return b.q-a.q}).slice(0,5),inTop={};
+    top.forEach(function(x){inTop[x.id]=1});
+    var low=normais.filter(function(x){return byId[x.id]&&!inTop[x.id]}).sort(function(a,b){return a.q-b.q||a.n.localeCompare(b.n,'pt-BR')}).slice(0,5);
+    var ex=extras.filter(function(x){return x.q>0}).sort(function(a,b){return b.q-a.q}).slice(0,5);
+    var h='<b>Semana: mais e menos vendidos</b><div class="mut">Últimos 7 dias</div>';
+    if(!top.length&&!ex.length)h+='<p class="mut">Nenhuma venda nos últimos 7 dias.</p>';
+    else{var mx=top.length?top[0].q:0;h+=bloco('Mais vendidos',top,mx,'var(--br)')+bloco('Menos vendidos',low,mx,'var(--wn)')+bloco('Ingredientes e coberturas mais pedidos',ex,ex.length?ex[0].q:0,'#ffd21f')}
+    if(card.innerHTML!==h)card.innerHTML=h;
+  }
+  if(res)new MutationObserver(pintar).observe(res,{childList:true});
+  pintar();setTimeout(pintar,800);setInterval(pintar,30000);
+})();
