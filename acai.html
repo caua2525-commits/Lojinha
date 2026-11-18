@@ -50,7 +50,7 @@ textarea{width:100%;margin-top:8px;font:12px/1.3 ui-monospace,Menlo,monospace;ba
 <h2>Escolha o açaí</h2>
 <div id="bases"></div>
 <div id="ingw" class="card" hidden><b>Escolha os ingredientes</b><div id="ings"></div><b id="cth" style="display:block;margin-top:16px" hidden>Escolha a cobertura</b><div id="cobs"></div><button class="pri" id="addc">Adicionar ao pedido</button></div>
-<div id="cartw" class="card" hidden><b>Seu pedido</b><div id="cups"></div><select id="ret2" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><option value="">Retirada: o quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option></select><input id="obs2" maxlength="140" placeholder="Observação (opcional): sem granola, calda à parte" autocomplete="off" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button class="pri" id="go"></button><div class="mut" style="margin-top:8px">O pagamento é por Pix. O código aparece logo depois de enviar o pedido.</div></div>
+<div id="cartw" class="card" hidden><b>Seu pedido</b><div id="cups"></div><div style="display:flex;gap:8px;margin-top:8px"><input id="cup2" placeholder="Cupom de desconto" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:0;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button id="cupb2" class="sec" type="button" style="width:auto;margin-top:0;padding:0 16px">Aplicar</button></div><select id="ret2" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><option value="">Retirada: o quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option></select><input id="obs2" maxlength="140" placeholder="Observação (opcional): sem granola, calda à parte" autocomplete="off" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button class="pri" id="go"></button><div class="mut" style="margin-top:8px">O pagamento é por Pix. O código aparece logo depois de enviar o pedido.</div></div>
 <h2>Pedidos em andamento</h2>
 <div id="orders"></div>
 <button class="sec" id="nt" hidden>Ativar avisos neste celular</button>
@@ -80,6 +80,8 @@ function clearStore(items){
   try{const d=parent.document,b=d.createElement('button');b.dataset.a='cm';b.hidden=true;d.body.appendChild(b);
     items.forEach(i=>{b.dataset.id=i.p;for(let k=0;k<i.q;k++)b.click()});b.remove()}catch(e){}
 }
+const cupDesc=t=>{try{const c=parent.__cupom;if(!c)return 0;return Math.min(t,Math.round((c.pct?t*c.pct/100:c.val)*100)/100)}catch(e){return 0}};
+const cupCode=d=>{try{return d>0&&parent.__cupom?parent.__cupom.code:''}catch(e){return ''}};
 function goPed(){try{const t=parent.document.querySelector('#tabs button[data-v="ped"]');if(t)t.click()}catch(e){}}
 const cupTot=c=>(P(c.b)?P(c.b).price:0)+c.i.reduce((s,id)=>s+(P(id)?P(id).price:0),0);
 function msg(t){let m=$('#msg');try{if(parent!==window){const pm=parent.document.getElementById('msg');if(pm)m=pm}}catch(e){}m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
@@ -116,7 +118,7 @@ function render(){
   const store=cups.length?storeItems():[],tot=cups.reduce((s,c)=>s+cupTot(c),0)+store.reduce((s,i)=>s+i.pr*i.q,0);
   $('#cartw').hidden=!cups.length;
   $('#cups').innerHTML=cups.map((c,k)=>`<div class="cup"><span><b>${esc(P(c.b)?P(c.b).name:'Açaí')}</b><br><span class="mut">${c.i.map(id=>esc(P(id)?P(id).name:'')).join(', ')||'Sem ingredientes'}</span></span><span><b>${R(cupTot(c))}</b><br><button class="del" data-r="${k}">Remover</button></span></div>`).join('')+store.map(i=>`<div class="cup"><span>${i.q}x ${esc(i.n)}<br><span class="mut">Item da loja</span></span><b>${R(i.pr*i.q)}</b></div>`).join('');
-  $('#go').textContent='Fazer pedido: '+R(tot);
+  const dsc0=cups.length?cupDesc(tot):0;$('#go').textContent='Fazer pedido: '+R(tot-dsc0)+(dsc0>0?' (cupom aplicado)':'');
   const isA=i=>{const p=P(i.p),c=p?nz(p.cat):'';return c==='acai'||c==='ingredientes'||c.indexOf('cobertura')===0};
   const ac=orders.filter(o=>ST[o.st]&&(o.items||[]).some(isA)).sort((a,b)=>b.t-a.t);
   $('#orders').innerHTML=ac.map(o=>`<div class="card"><div class="rh"><span class="pill ${o.st}">${ST[o.st]}</span><b>${R(o.total)}</b></div>${o.code&&['novo','sep','pronto'].includes(o.st)?`<div class="cod">Código de retirada <b>${o.code}</b></div>`:''}<div class="mut">${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div>`
@@ -138,12 +140,12 @@ async function order(fromParent){
   const store=storeItems(),multi=cups.length>1,items=[];
   cups.forEach((c,k)=>{const s=multi?' (copo '+(k+1)+')':'',b=P(c.b);items.push({p:b.id,n:b.name+s,q:1,pr:b.price});c.i.forEach(id=>{const g=P(id);items.push({p:id,n:'+ '+g.name+s,q:1,pr:g.price})})});
   store.forEach(i=>items.push(i));
-  const total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100;
+  const total0=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,dsc=cupDesc(total0),total=Math.round((total0-dsc)*100)/100,cp=cupCode(dsc);
   const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900),obs=(($('#obs2').value||'').trim()||(()=>{try{return parent.document.getElementById('obs').value.trim()}catch(e){return ''}})()).slice(0,140),ret=$('#ret2').value||(()=>{try{return parent.document.getElementById('ret').value}catch(e){return ''}})();
-  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name,items,total,pay:'pix',st:'novo',paid:false,code,obs,ret,t:Date.now()});
+  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name,items,total,pay:'pix',st:'novo',paid:false,code,obs,ret,cupom:cp,desc:dsc,t:Date.now()});
   ntfy('Novo pedido de açaí','O cliente '+name+' fez um pedido de '+R(total)+'. Abra o app para ver.');
   let ok=false;try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}
-  cups=[];base=null;pick=new Set();clearStore(store);$('#obs2').value='';$('#ret2').value='';try{parent.document.getElementById('obs').value='';parent.document.getElementById('ret').value=''}catch(e){}render();if(fromParent)goPed();
+  cups=[];base=null;pick=new Set();clearStore(store);$('#obs2').value='';$('#ret2').value='';$('#cup2').value='';try{parent.document.getElementById('obs').value='';parent.document.getElementById('ret').value='';parent.document.getElementById('cupom').value='';parent.__cupom=null}catch(e){}render();if(fromParent)goPed();
   msg((ok?'Pedido enviado! Código Pix copiado: cole no app do banco. ':'Pedido enviado! Copie o código Pix abaixo. ')+'Seu código de retirada: '+code+'. Guarde-o.');
 }
 document.addEventListener('click',async e=>{
@@ -157,6 +159,7 @@ document.addEventListener('click',async e=>{
       if(bad){msg('Sem estoque suficiente de '+(P(bad)?P(bad).name:'um item')+'.');return}
       cups.push(c);base=null;pick=new Set();render();msg('Açaí adicionado ao pedido.')}
     else if(b.dataset.r){cups.splice(+b.dataset.r,1);render()}
+    else if(b.id==='cupb2'){const r=await parent.__aplicarCupom($('#cup2').value);msg(r.msg);render()}
     else if(b.id==='go')await order();
     else if(b.dataset.c){const o=orders.find(x=>x.id===b.dataset.c);try{await navigator.clipboard.writeText(pixCode(o));msg('Código copiado. No app do banco, escolha Pix Copia e Cola.')}catch(x){msg('Segure o dedo no código e toque em Copiar.')}}
     else if(b.dataset.p){const o=orders.find(x=>x.id===b.dataset.p);if(!o)return;
@@ -184,7 +187,7 @@ if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWor
 window.acaiCupsCount=()=>cups.length;
 window.acaiInfo=()=>({n:cups.length,total:cups.reduce((s,c)=>s+cupTot(c),0)});
 window.acaiOrder=()=>order(true).catch(erro);
-let sig='';setInterval(()=>{const s=JSON.stringify(storeItems());if(s!==sig){sig=s;render()}},700);
+let sig='';setInterval(()=>{const s=JSON.stringify(storeItems())+((()=>{try{return (parent.__cupom||{}).code}catch(e){return ''}})()||'');if(s!==sig){sig=s;render()}},700);
 render();
 </script>
 </body>

@@ -2,6 +2,7 @@
 (function(){
   var V='https://www.gstatic.com/firebasejs/10.14.1/';
   var list=document.getElementById('plist'),ords={},uns=[];
+  window.__pedidos=function(){return ords};
   var R=function(v){return (+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})};
   function problema(o){
     var its=o.items||[],prods;
@@ -12,6 +13,17 @@
     var exp=0;
     its.forEach(function(i){var p=prods.find(function(x){return x.id===i.p});if(p)exp+=p.price*i.q});
     exp=Math.round(exp*100)/100;
+    var d=+o.desc||0;
+    if(d>0){
+      if(window.__cupons){
+        var cp=window.__cupons[o.cupom];
+        if(!cp||!cp.on)return 'O cupom '+(o.cupom||'')+' não existe ou está desligado.';
+        var ok=Math.min(exp,Math.round((cp.pct?exp*cp.pct/100:cp.val)*100)/100);
+        if(Math.abs(ok-d)>0.01)return 'O desconto ('+R(d)+') não confere com o cupom '+o.cupom+' ('+R(ok)+').';
+        if(Object.keys(ords).some(function(k){var x=ords[k];return x.uid===o.uid&&x.cupom===o.cupom&&x.st!=='canc'&&x.t<o.t}))return 'O cliente já usou o cupom '+o.cupom+' antes.';
+      }
+      exp=Math.round((exp-d)*100)/100;
+    }
     if(Math.abs(exp-(+o.total||0))>0.01)return 'O total do pedido ('+R(o.total)+') não bate com os preços do catálogo ('+R(exp)+').';
     return '';
   }
@@ -254,4 +266,129 @@ nav button[aria-current="page"]::before{filter:none;opacity:1;transform:translat
     if(prev)ps.forEach(function(p){if(cur[p.id]&&!prev[p.id])aviso(p)});
     prev=cur;
   },4000);
+})();
+
+
+/* Promoção do dia: faixa no topo da loja, ligada e desligada pelo dono */
+(function(){
+  var V='https://www.gstatic.com/firebasejs/10.14.1/',ol=document.getElementById('ologged');
+  if(!ol)return;
+  var t=document.createElement('label');t.className='qk';
+  t.innerHTML='<span>Promoção do dia na loja</span><input type="checkbox" id="promoon">';
+  var x=document.createElement('div');
+  x.style.cssText='background:var(--card);box-shadow:var(--sh);border-radius:18px;padding:12px 16px;margin:10px 0';
+  x.innerHTML='<input id="promotxt" maxlength="80" placeholder="Ex.: Açaí 500ml por R$ 14 hoje" autocomplete="off">';
+  var pm=document.getElementById('prepmin'),anc=pm&&pm.parentNode;
+  if(anc){anc.after(t);t.after(x)}else{ol.insertBefore(x,ol.firstChild);ol.insertBefore(t,ol.firstChild)}
+  var on=t.querySelector('input'),tx=x.querySelector('input'),F=null,db=null,uns=[];
+  function say(m){var e=document.getElementById('msg');if(!e)return;e.textContent=m;setTimeout(function(){e.textContent=''},4000)}
+  async function salvar(){
+    if(!F||!db){say('Entre na conta da loja online primeiro.');return}
+    var txt=tx.value.trim().slice(0,80);
+    try{await F.setDoc(F.doc(db,'config','promo'),{txt:txt,on:on.checked});say(on.checked&&txt?'Promoção publicada na loja.':'Promoção desligada.')}catch(e){say('Não consegui salvar a promoção.')}
+  }
+  on.addEventListener('change',salvar);tx.addEventListener('change',salvar);
+  (async function(){
+    try{
+      var A=await import(V+'firebase-app.js'),Au=await import(V+'firebase-auth.js'),app;F=await import(V+'firebase-firestore.js');
+      for(var i=0;i<50&&!(app=A.getApps()[0]);i++)await new Promise(function(r){setTimeout(r,200)});
+      if(!app)return;
+      db=F.getFirestore(app);
+      Au.onAuthStateChanged(Au.getAuth(app),function(u){
+        uns.forEach(function(f){f()});uns=[];
+        if(!u)return;
+        uns.push(F.onSnapshot(F.doc(db,'config','promo'),function(s){var d=s.data()||{};if(document.activeElement!==tx)tx.value=d.txt||'';if(document.activeElement!==on)on.checked=!!d.on},function(){}));
+      });
+    }catch(e){}
+  })();
+})();
+
+/* Resumo: gráficos por dia da semana, por horário e clientes que mais compram */
+(function(){
+  var sec=document.getElementById('v-resumo'),res=document.getElementById('res');
+  if(!sec)return;
+  var card=document.createElement('div');card.className='card';card.id='graficos';
+  var ant=document.getElementById('semana');
+  if(ant)ant.after(card);else sec.insertBefore(card,sec.firstChild);
+  var R=function(v){return (+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})};
+  var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  var DIA=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],DIAF=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+  var tit=function(t){return '<div class="mut" style="margin-top:16px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">'+t+'</div>'};
+  function colunas(vals,rot){
+    var mx=Math.max.apply(null,vals),best=mx>0?vals.indexOf(mx):-1,g=vals.length>10?2:6;
+    var barras=vals.map(function(v,i){return '<div style="flex:1;min-width:0;display:flex;align-items:flex-end;height:100%"><div style="width:100%;height:'+(v?Math.max(4,v/mx*100):0)+'%;border-radius:6px 6px 2px 2px;background:'+(i===best?'var(--br)':'var(--mut)')+';opacity:'+(i===best?1:.4)+';transition:height .5s ease"></div></div>'}).join('');
+    var nomes=rot.map(function(r){return '<div style="flex:1;min-width:0;display:flex;justify-content:center"><span style="white-space:nowrap;font-size:10px;font-weight:700;color:var(--mut)">'+r+'</span></div>'}).join('');
+    return '<div style="display:flex;align-items:flex-end;gap:'+g+'px;height:96px;margin-top:10px">'+barras+'</div><div style="display:flex;gap:'+g+'px;margin-top:4px">'+nomes+'</div>';
+  }
+  function pintar(){
+    var S2;try{S2=S}catch(e){return}
+    var desde=Date.now()-28*864e5,dia=[0,0,0,0,0,0,0],hor=[],n=0,i;
+    for(i=0;i<24;i++)hor.push(0);
+    (S2.sales||[]).forEach(function(s){if(!(s.t>=desde))return;var d=new Date(s.t),v=+s.tot||0;dia[d.getDay()]+=v;hor[d.getHours()]+=v;n++});
+    var h='<b>Quando a loja mais vende</b><div class="mut">Últimos 28 dias</div>';
+    if(!n)h+='<p class="mut">Ainda sem vendas para mostrar.</p>';
+    else{
+      var md=dia.indexOf(Math.max.apply(null,dia)),mh=hor.indexOf(Math.max.apply(null,hor));
+      h+='<div class="mut" style="margin-top:6px">Melhor dia: <b>'+DIAF[md]+'</b>. Horário de pico: <b>'+mh+'h</b>.</div>';
+      h+=tit('Por dia da semana')+colunas(dia,DIA);
+      h+=tit('Por horário')+colunas(hor,hor.map(function(_,k){return k%3===0?k+'h':''}));
+    }
+    var po=window.__pedidos?window.__pedidos():{},g={},lim=Date.now()-30*864e5;
+    Object.keys(po).forEach(function(k){var o=po[k];if(o.st!=='ent'||!(o.t>=lim))return;var key=o.uid||o.name,x=g[key]||(g[key]={n:o.name||'Cliente',q:0,v:0});x.q++;x.v+=+o.total||0});
+    var cl=Object.keys(g).map(function(k){return g[k]}).sort(function(a,b){return b.v-a.v}).slice(0,5);
+    if(cl.length)h+=tit('Clientes que mais compram (30 dias)')+cl.map(function(c){return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-weight:700"><span>'+esc(c.n)+'<br><span class="mut">'+c.q+(c.q==1?' pedido':' pedidos')+'</span></span><span>'+R(c.v)+'</span></div>'}).join('');
+    var av=Object.keys(po).map(function(k){return po[k]}).filter(function(o){return o.nota>=1&&o.t>=lim});
+    if(av.length){
+      var sm=av.reduce(function(a,o){return a+(+o.nota)},0)/av.length;
+      h+=tit('Avaliações dos clientes (30 dias)')+'<div style="font-weight:800;font-size:22px;margin-top:6px">'+sm.toFixed(1).replace('.',',')+' <span style="color:#f5a400">★</span> <span class="mut">('+av.length+(av.length==1?' avaliação':' avaliações')+')</span></div>';
+      h+=av.filter(function(o){return o.coment}).sort(function(a,b){return b.t-a.t}).slice(0,5).map(function(o){return '<div style="padding:8px 0;border-bottom:1px dashed var(--line)"><span style="color:#f5a400">'+'★'.repeat(o.nota)+'</span><span class="mut">'+'★'.repeat(5-o.nota)+'</span> <b>'+esc(o.name||'Cliente')+'</b><br>'+esc(o.coment)+'</div>'}).join('');
+    }
+    if(card.innerHTML!==h)card.innerHTML=h;
+  }
+  if(res)new MutationObserver(pintar).observe(res,{childList:true});
+  pintar();setTimeout(pintar,900);setInterval(pintar,30000);
+})();
+
+
+/* Cupons de desconto: o dono cria, liga, desliga e exclui */
+(function(){
+  var V='https://www.gstatic.com/firebasejs/10.14.1/',ol=document.getElementById('ologged');
+  if(!ol)return;
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<details class="acc"><summary>Cupons de desconto</summary><div class="accb"><input id="cpcode" placeholder="Código (ex.: PRIMEIRA10)" maxlength="15" autocapitalize="characters" autocomplete="off"><div class="two"><select id="cptipo"><option value="pct">% de desconto</option><option value="val">R$ de desconto</option></select><input id="cpval" inputmode="decimal" placeholder="Valor" autocomplete="off"></div><button class="pri" id="cpsave" type="button">Salvar cupom</button><div class="mut">Cada cliente pode usar o mesmo cupom uma vez.</div><div id="cplist"></div></div></details>';
+  ol.appendChild(c);
+  var F=null,db=null,uns=[],lista={};
+  function say(m){var e=document.getElementById('msg');if(!e)return;e.textContent=m;setTimeout(function(){e.textContent=''},4000)}
+  function pintar(){
+    var ids=Object.keys(lista).sort();
+    document.getElementById('cplist').innerHTML=ids.map(function(id){var d=lista[id];
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)"><span><b>'+id+'</b><br><span class="mut">'+(d.pct?d.pct+'% de desconto':'R$ '+String(d.val).replace('.',',')+' de desconto')+', '+(d.on?'ligado':'desligado')+'</span></span><span style="display:flex;gap:6px"><button class="sec" type="button" data-cp="tog" data-id="'+id+'" style="padding:8px 12px">'+(d.on?'Desligar':'Ligar')+'</button><button class="sec" type="button" data-cp="del" data-id="'+id+'" style="padding:8px 12px">Excluir</button></span></div>'}).join('');
+  }
+  c.addEventListener('click',async function(e){
+    var b=e.target.closest('button');if(!b)return;
+    if(!F||!db){say('Entre na conta da loja online primeiro.');return}
+    try{
+      if(b.id==='cpsave'){
+        var code=document.getElementById('cpcode').value.toUpperCase().replace(/[^A-Z0-9]/g,''),tipo=document.getElementById('cptipo').value,v=parseFloat(String(document.getElementById('cpval').value).replace(',','.'));
+        if(code.length<3){say('Use um código de 3 a 15 letras ou números.');return}
+        if(!(v>0)||(tipo==='pct'&&v>100)){say(tipo==='pct'?'Informe uma porcentagem de 1 a 100.':'Informe o valor do desconto em reais.');return}
+        await F.setDoc(F.doc(db,'cupons',code),{pct:tipo==='pct'?v:0,val:tipo==='val'?v:0,on:true});
+        document.getElementById('cpcode').value='';document.getElementById('cpval').value='';say('Cupom '+code+' salvo.');
+      }else if(b.dataset.cp==='tog'){await F.updateDoc(F.doc(db,'cupons',b.dataset.id),{on:!lista[b.dataset.id].on})}
+      else if(b.dataset.cp==='del'){if(confirm('Excluir o cupom '+b.dataset.id+'?'))await F.deleteDoc(F.doc(db,'cupons',b.dataset.id))}
+    }catch(er){say('Não consegui salvar o cupom. Confira se as regras do Firestore foram atualizadas.')}
+  });
+  (async function(){
+    try{
+      var A=await import(V+'firebase-app.js'),Au=await import(V+'firebase-auth.js'),app;F=await import(V+'firebase-firestore.js');
+      for(var i=0;i<50&&!(app=A.getApps()[0]);i++)await new Promise(function(r){setTimeout(r,200)});
+      if(!app)return;
+      db=F.getFirestore(app);
+      Au.onAuthStateChanged(Au.getAuth(app),function(u){
+        uns.forEach(function(f){f()});uns=[];lista={};window.__cupons=undefined;pintar();
+        if(!u)return;
+        uns.push(F.onSnapshot(F.collection(db,'cupons'),function(s){lista={};s.forEach(function(d){lista[d.id]=d.data()});window.__cupons=lista;pintar()},function(){}));
+      });
+    }catch(e){}
+  })();
 })();

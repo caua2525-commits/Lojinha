@@ -165,6 +165,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar',ent:'Entregue',canc:'Cancelado'};
 let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],healing=false,ip=null,catF='',sheet=false,tab='loja',loaded=false,view=(()=>{try{return localStorage.getItem('lv')||'grade'}catch(e){return 'grade'}})();
 const P=id=>prods.find(p=>p.id===id);
+const desc=t=>{const c=window.__cupom;if(!c)return 0;return Math.min(t,Math.round((c.pct?t*c.pct/100:c.val)*100)/100)};
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
 const asc=(s,n)=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().slice(0,n);
@@ -208,9 +209,9 @@ function render(){
     return `<div class="tile${p.qty<=0?' out':''}">${p.img?`<img class="timg" src="${p.img}" alt="${esc(p.name)}">`:`<div class="timg ph">${esc(p.name.slice(0,1).toUpperCase())}</div>`}<div class="info"><span class="nm">${esc(p.name)}</span>${PR(p.price)}${p.qty<=3?`<span class="st low">${p.qty<=0?'Esgotado':'Últimas '+p.qty}</span>`:''}</div><div class="act">${!open?'<button class="addb" disabled>Fechado agora</button>':p.qty<=0?'<button class="addb" disabled>Esgotado</button>':c?`<div class="stp"><button data-a="cm" data-id="${p.id}" aria-label="Tirar 1">−</button><b>${c}</b><button data-a="add" data-id="${p.id}" aria-label="Pôr 1">+</button></div>`:`<button class="addb" data-a="add" data-id="${p.id}">Adicionar</button>`}</div></div>`}).join('')||`<p class="mut em">${prods.length?'Nenhum produto encontrado. Tente outro nome ou categoria.':'A loja ainda não publicou produtos. Volte daqui a pouco.'}</p>`);
   if(!ids.length||!open)sheet=false;
   $('#cart').classList.toggle('open',sheet);$('#scrim').hidden=!sheet;
-  const nq=ids.reduce((s,id)=>s+cart[id],0);$('#bar').hidden=!ids.length||sheet||!open;$('#bn').textContent=nq+(nq==1?' item':' itens');$('#bt').textContent=R(tot);
+  const nq=ids.reduce((s,id)=>s+cart[id],0);$('#bar').hidden=!ids.length||sheet||!open;$('#bn').textContent=nq+(nq==1?' item':' itens');$('#bt').textContent=R(tot-desc(tot));
   $('#citems').innerHTML=ids.map(id=>`<div class="ci"><span>${esc(P(id).name)}</span><span class="step"><button data-a="cm" data-id="${id}" aria-label="Tirar 1">−</button><b>${cart[id]}</b><button data-a="add" data-id="${id}" aria-label="Pôr 1">+</button></span><b>${R(P(id).price*cart[id])}</b></div>`).join('');
-  $('#ctot').textContent=R(tot);
+  $('#ctot').textContent=R(tot-desc(tot));
   $('#ofia').hidden=$('#ofia').disabled=!cust.fiadoOk;if(!cust.fiadoOk&&$('#pay').value==='fia')$('#pay').value='pix';
   $('#olist').innerHTML=orders.map(ocard).join('')||'<p class="mut">Você ainda não fez pedidos. Escolha produtos na aba Loja.</p>';
   $('#fiado').innerHTML=cust.fiadoOk?`<div class="caderno"><span class="mut">Caderninho do fiado</span><span class="big">${R(cust.balance||0)}</span><span class="mut">Limite de ${R(cust.limit||0)}. Ainda dá para pegar ${R(Math.max(0,(cust.limit||0)-(cust.balance||0)))}.</span></div>`:`<div class="card"><b>Fiado</b><p class="mut">O fiado ainda não foi liberado para você. Peça à loja se quiser comprar fiado.</p></div>`;
@@ -221,10 +222,10 @@ async function order(){
   if(!aberta(cfg)){msg('A loja está fechada agora.');return}
   const ids=Object.keys(cart).filter(P);if(!ids.length)return;
   const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900);
-  const items=ids.map(id=>({p:id,n:P(id).name,q:cart[id],pr:P(id).price})),total=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,pay=$('#pay').value;
+  const items=ids.map(id=>({p:id,n:P(id).name,q:cart[id],pr:P(id).price})),total0=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,dsc=desc(total0),total=Math.round((total0-dsc)*100)/100,pay=$('#pay').value;
   if(pay==='fia'&&(cust.balance||0)+total>(cust.limit||0)){msg('Esse pedido passa do seu limite de fiado.');return}
-  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,code,obs:($('#obs').value||'').trim().slice(0,140),ret:$('#ret').value,troco:pay==='din'?(parseFloat(String($('#trocopara').value).replace(',','.'))||0):0,t:Date.now()});
-  cart={};sheet=false;$('#obs').value='';$('#ret').value='';$('#trocopara').value='';render();let ok=false;
+  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,code,obs:($('#obs').value||'').trim().slice(0,140),ret:$('#ret').value,troco:pay==='din'?(parseFloat(String($('#trocopara').value).replace(',','.'))||0):0,cupom:dsc>0&&window.__cupom?window.__cupom.code:'',desc:dsc,t:Date.now()});
+  cart={};sheet=false;$('#obs').value='';$('#ret').value='';$('#trocopara').value='';window.__cupom=null;{const ci=document.getElementById('cupom');if(ci)ci.value=''}render();let ok=false;
   if(cfg.ntfy)fetch('https://ntfy.sh/'+encodeURIComponent(cfg.ntfy)+'/publish?title='+encodeURIComponent('Novo pedido')+'&priority=high&tags=shopping_cart&message='+encodeURIComponent(items.reduce((s,i)=>s+i.q,0)+' item(ns), '+R(total)+'. Abra o app para ver.'),{mode:'no-cors'}).catch(()=>{});
   if(pay==='pix'&&cfg.pix){try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}}
   msg((ok?'Pedido enviado! Código Pix copiado: cole no app do seu banco. ':'Pedido enviado! ')+'Seu código de retirada: '+code+'. Guarde-o.');

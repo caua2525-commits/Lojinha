@@ -496,7 +496,7 @@ async function trans(o,v){
   }else if(v==='ent'){
     if(o.pay==='pix'&&!o.paid){msg('Confirme o Pix recebido antes de entregar.');return}
     const items=its.filter(i=>P(i.p)).map(i=>({p:i.p,n:P(i.p).name,q:i.q,pr:P(i.p).price,c:P(i.p).cost||0}));
-    const tot=rd(items.reduce((s,i)=>s+i.pr*i.q,0)),sid='o'+o.id;
+    const tot=Math.max(0,rd(items.reduce((s,i)=>s+i.pr*i.q,0)-(+o.desc||0))),sid='o'+o.id;
     if(o.pay==='fia'&&cust[o.uid]&&bal(o.uid)+tot>(cust[o.uid].limit||0)){msg('Passa do limite de fiado deste cliente. Aumente o limite em Clientes do app.');return}
     if(!S.sales.some(s=>s.id===sid)){
       S.sales.push({id:sid,t:Date.now(),d:today(),pay:o.pay==='fia'?'fia':(o.pay==='din'||o.pay==='car'?o.pay:'pix'),tot,rec:tot,cid:o.pay==='fia'?o.uid:undefined,items});
