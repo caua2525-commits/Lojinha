@@ -405,3 +405,64 @@ nav button[aria-current="page"]::before{filter:none;opacity:1;transform:translat
   var g=document.createElement('div');g.id='ptag';g.textContent='Painel do dono';
   h.insertBefore(d,h.firstChild);d.after(g);
 })();
+
+
+/* Ajudante: conecta ao Firebase já iniciado pelo app */
+window.__fb=window.__fb||(async function(){
+  try{
+    var V='https://www.gstatic.com/firebasejs/10.14.1/',A=await import(V+'firebase-app.js'),Au=await import(V+'firebase-auth.js'),F=await import(V+'firebase-firestore.js'),app;
+    for(var i=0;i<50&&!(app=A.getApps()[0]);i++)await new Promise(function(r){setTimeout(r,200)});
+    return app?{F:F,Au:Au,db:F.getFirestore(app),auth:Au.getAuth(app)}:null;
+  }catch(e){return null}
+})();
+
+/* Tela de abertura: o logo aparece grande por um instante */
+(function(){
+  try{if(sessionStorage.getItem('splash'))return;sessionStorage.setItem('splash','1')}catch(e){}
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  var lg=document.getElementById('logo'),t=document.getElementById('ttl');if(!lg)return;
+  var o=document.createElement('div');o.id='splash';
+  o.style.cssText='position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);transition:opacity .5s ease,transform .5s ease';
+  var d=document.createElement('div');d.style.cssText='width:170px;height:170px;filter:drop-shadow(0 14px 18px rgba(16,41,90,.3));animation:logoIn .8s cubic-bezier(.2,1.3,.4,1) both';d.innerHTML=lg.innerHTML;
+  var n=document.createElement('div');n.textContent=t?t.textContent:'';n.style.cssText='font:400 30px "Alfa Slab One",Georgia,serif;color:var(--ink);text-align:center;padding:0 20px';
+  o.appendChild(d);o.appendChild(n);document.body.appendChild(o);
+  setTimeout(function(){o.style.opacity='0';o.style.transform='scale(1.04)';setTimeout(function(){o.remove()},520)},1300);
+})();
+
+/* Selos nos produtos: o dono escolhe Novo, Mais pedido ou Promoção em cada produto */
+(function(){
+  var lista=document.getElementById('lista');if(!lista)return;
+  var selos={},ctx=null,un=null;
+  function say(m){var e=document.getElementById('msg');if(!e)return;e.textContent=m;clearTimeout(say.t);say.t=setTimeout(function(){e.textContent=''},4000)}
+  function decorar(){
+    lista.querySelectorAll(':scope>.row').forEach(function(r){
+      if(r.querySelector('.selo-ctl'))return;
+      var inp=r.querySelector('[data-id]');if(!inp)return;
+      var id=inp.dataset.id,s=selos[id]||{},w=document.createElement('div');
+      w.className='selo-ctl';w.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px';
+      w.innerHTML='<label>Selo na loja<select data-selo="'+id+'"><option value="">Sem selo</option><option value="novo">Novo</option><option value="mais">Mais pedido</option><option value="promo">Promoção</option></select></label><label>Preço antigo (R$)<input data-old="'+id+'" inputmode="decimal" placeholder="Só na promoção" autocomplete="off"></label>';
+      w.querySelector('select').value=s.t||'';w.querySelector('input').value=s.old?String(s.old).replace('.',','):'';
+      r.appendChild(w);
+    });
+  }
+  new MutationObserver(decorar).observe(lista,{childList:true});decorar();
+  lista.addEventListener('change',async function(e){
+    var id=e.target.dataset&&(e.target.dataset.selo||e.target.dataset.old);if(!id)return;
+    if(!ctx){say('Entre na conta da loja online primeiro (aba Pedidos).');return}
+    var w=e.target.closest('.selo-ctl'),t=w.querySelector('select').value,old=parseFloat(String(w.querySelector('input').value).replace(',','.'))||0;
+    var val=t?(t==='promo'&&old>0?{t:t,old:old}:{t:t}):ctx.F.deleteField(),obj={};obj[id]=val;
+    try{await ctx.F.setDoc(ctx.F.doc(ctx.db,'config','selos'),obj,{merge:true});say(t?'Selo salvo.':'Selo removido.')}
+    catch(er){say('Não consegui salvar o selo.')}
+  });
+  window.__fb.then(function(x){
+    if(!x)return;ctx=x;
+    x.Au.onAuthStateChanged(x.auth,function(u){
+      if(un){un();un=null}selos={};
+      if(!u)return;
+      un=x.F.onSnapshot(x.F.doc(x.db,'config','selos'),function(s){
+        selos=s.data()||{};
+        lista.querySelectorAll('.selo-ctl').forEach(function(w){if(!w.contains(document.activeElement))w.remove()});decorar();
+      },function(){});
+    });
+  });
+})();
