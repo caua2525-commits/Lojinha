@@ -247,6 +247,7 @@ onAuthStateChanged(auth,async u=>{
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 document.addEventListener('click',e=>{if(e.target.id==='scrim'){base=null;pick=new Set();cartOpen=false;render()}});
 document.addEventListener('change',e=>{if(e.target.id==='ret2'){const d=$('#retdt2');d.hidden=e.target.value!=='agendar';const m=new Date(Date.now()+10*60000-new Date().getTimezoneOffset()*60000);d.min=m.toISOString().slice(0,16)}});
+window.acaiClear=()=>{cups=[];base=null;pick=new Set();cartOpen=false;render()};
 window.acaiCupsCount=()=>cups.length;
 window.acaiInfo=()=>({n:cups.length,total:cups.reduce((s,c)=>s+cupTot(c),0)});
 window.acaiOrder=()=>order(true).catch(erro);

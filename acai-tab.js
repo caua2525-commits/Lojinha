@@ -442,3 +442,35 @@ window.__fb=window.__fb||(async function(){
   });
   setInterval(function(){if(window.__lotado&&window.__lotado<=Date.now()){window.__lotado=0;atualizar()}},15000);
 })();
+
+
+/* Botão × para tirar um produto inteiro do carrinho, e Esvaziar carrinho */
+(function(){
+  var ci=document.getElementById('citems');if(!ci)return;
+  var st=document.createElement('style');
+  st.textContent='.ci{grid-template-columns:auto 1fr auto auto!important}.rmx{width:30px;height:30px;border-radius:50%;border:2px solid var(--wn);background:transparent;color:var(--wn);font-size:18px;font-weight:800;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;transition:transform .12s,background .15s}.rmx:active{transform:scale(.9);background:var(--wn);color:#fff}#limpar{background:none;border:0;color:var(--wn);font-weight:800;text-decoration:underline;padding:6px 0;align-self:flex-start}';
+  document.head.appendChild(st);
+  function press(id,n){var b=document.createElement('button');b.dataset.a='cm';b.dataset.id=id;b.hidden=true;document.body.appendChild(b);for(var k=0;k<n;k++)b.click();b.remove()}
+  function linha(r){var m=r.querySelector('button[data-id]'),q=+((r.querySelector('.step b')||{}).textContent)||0;return m&&q>0?{id:m.dataset.id,q:q}:null}
+  function marcar(){
+    ci.querySelectorAll('.ci').forEach(function(r){
+      if(r.querySelector('.rmx'))return;
+      var m=r.querySelector('button[data-id]');if(!m)return;
+      var x=document.createElement('button');x.type='button';x.className='rmx';x.dataset.rmx=m.dataset.id;x.setAttribute('aria-label','Tirar do pedido');x.textContent='\u00d7';
+      r.insertBefore(x,r.firstChild);
+    });
+  }
+  new MutationObserver(marcar).observe(ci,{childList:true});marcar();
+  var lim=document.createElement('button');lim.type='button';lim.id='limpar';lim.textContent='Esvaziar carrinho';ci.after(lim);
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-rmx],#limpar');if(!b)return;
+    if(b.id==='limpar'){
+      if(!confirm('Esvaziar o carrinho e cancelar esta compra?'))return;
+      var todos=[].slice.call(ci.querySelectorAll('.ci')).map(linha).filter(Boolean);
+      todos.forEach(function(l){press(l.id,l.q)});
+      try{var w=document.querySelector('#sec-acai iframe').contentWindow;if(w&&w.acaiClear)w.acaiClear()}catch(x){}
+      return;
+    }
+    var l=linha(b.closest('.ci'));if(l)press(l.id,l.q);
+  });
+})();
