@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QR Code da loja</title>
 <style>
-:root{--ink:#10295a;--bg:#ffd21f;--acc:#d8232a;box-sizing:border-box}
+:root{--ink:#2e1708;--bg:#e8590c;--acc:#9a3412;box-sizing:border-box}
 *,*::before,*::after{box-sizing:inherit}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:20px}
 .poster{background:#fff;border:3px solid var(--ink);border-radius:24px;padding:28px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 14px 34px rgba(16,41,90,.25)}
@@ -32,7 +32,7 @@ button{margin-top:18px;width:100%;border:0;border-radius:14px;padding:13px;backg
 <script>
 var link=location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'loja.html';
 document.getElementById('url').textContent=link;
-try{new QRCode(document.getElementById('qr'),{text:link,width:240,height:240,colorDark:'#10295a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
+try{new QRCode(document.getElementById('qr'),{text:link,width:240,height:240,colorDark:'#2e1708',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
 catch(e){document.getElementById('qr').textContent='Não consegui gerar o QR Code. Confira a internet e abra de novo.'}
 </script>
 </body>

@@ -466,3 +466,36 @@ window.__fb=window.__fb||(async function(){
     });
   });
 })();
+
+
+/* Modo lotado: o dono pausa os novos pedidos por um tempo */
+(function(){
+  var ol=document.getElementById('ologged');if(!ol)return;
+  var c=document.createElement('div');c.className='card';
+  c.innerHTML='<b>Modo lotado</b><div class="mut" id="lotst" style="margin:4px 0 10px">Recebendo pedidos normalmente.</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><button class="sec" type="button" data-min="15">Pausar 15 min</button><button class="sec" type="button" data-min="30">Pausar 30 min</button><button class="sec" type="button" data-min="60">Pausar 1 hora</button></div><button class="pri" id="lotoff" type="button" style="margin-top:8px;width:100%" hidden>Voltar a receber pedidos</button>';
+  var pm=document.getElementById('prepmin'),anc=pm&&pm.parentNode;
+  if(anc)anc.after(c);else ol.insertBefore(c,ol.firstChild);
+  var ate=0,ctx=null,un=null;
+  function say(m){var e=document.getElementById('msg');if(!e)return;e.textContent=m;clearTimeout(say.t);say.t=setTimeout(function(){e.textContent=''},4000)}
+  function pintar(){
+    var on=ate>Date.now();
+    document.getElementById('lotst').textContent=on?'Pausado até '+new Date(ate).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'. Os clientes veem "Muitos pedidos no momento".':'Recebendo pedidos normalmente.';
+    document.getElementById('lotoff').hidden=!on;
+  }
+  c.addEventListener('click',async function(e){
+    var b=e.target.closest('button');if(!b)return;
+    if(!ctx){say('Entre na conta da loja online primeiro (aba Pedidos).');return}
+    var v=b.id==='lotoff'?0:Date.now()+(+b.dataset.min)*60000;
+    try{await ctx.F.setDoc(ctx.F.doc(ctx.db,'config','lotado'),{ate:v});say(v?'Novos pedidos pausados.':'Pedidos liberados.')}
+    catch(er){say('Não consegui salvar o modo lotado.')}
+  });
+  setInterval(pintar,20000);
+  window.__fb.then(function(x){
+    if(!x)return;ctx=x;
+    x.Au.onAuthStateChanged(x.auth,function(u){
+      if(un){un();un=null}ate=0;pintar();
+      if(!u)return;
+      un=x.F.onSnapshot(x.F.doc(x.db,'config','lotado'),function(s){ate=+((s.data()||{}).ate)||0;pintar()},function(){});
+    });
+  });
+})();

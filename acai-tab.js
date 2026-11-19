@@ -103,7 +103,10 @@ var prep=0,pbox=null,pn=null;
     var t=document.querySelector('#tabs button[data-v="loja"]');if(t)t.click();
     var bar=document.getElementById('bar');if(bar&&!bar.hidden)bar.click();
   });
-  document.addEventListener('change',function(e){if(e.target.id==='pay'){var t=document.getElementById('trocopara');if(t)t.hidden=e.target.value!=='din'}});
+  document.addEventListener('change',function(e){
+    if(e.target.id==='pay'){var t=document.getElementById('trocopara');if(t)t.hidden=e.target.value!=='din'}
+    if(e.target.id==='ret'){var d=document.getElementById('retdt');if(d){d.hidden=e.target.value!=='agendar';var m=new Date(Date.now()+10*60000-new Date().getTimezoneOffset()*60000);d.min=m.toISOString().slice(0,16)}}
+  });
   if(list)new MutationObserver(function(){addBtns();again()}).observe(list,{childList:true});
   document.addEventListener('click',function(e){
     var b=e.target.closest('[data-ja]');if(!b)return;
@@ -323,10 +326,11 @@ window.__fb=window.__fb||(async function(){
   var mins=function(s){var a=String(s||'0:0').split(':');return +a[0]*60+(+a[1]||0)};
   var aberta=function(c){if(c.open===false)return false;if(!c.auto)return true;var n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
   function pintar(){
+    if((window.__lotado||0)>Date.now()){pill.style.background='#b45309';pill.textContent='Muitos pedidos agora, voltamos às '+new Date(window.__lotado).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});return}
     var ok=aberta(cfg);pill.style.background=ok?'#1b7a4a':'#b3201f';
     pill.textContent=ok?'Aberta agora'+(cfg.auto&&cfg.to?', até '+cfg.to:''):(cfg.open===false?'Fechada no momento':'Fechada agora'+(cfg.from?', abrimos às '+cfg.from:''));
   }
-  setInterval(pintar,60000);
+  setInterval(pintar,60000);window.__pintarAberta=pintar;
   window.__fb.then(function(x){
     if(!x)return;
     x.Au.onAuthStateChanged(x.auth,function(u){
@@ -418,4 +422,23 @@ window.__fb=window.__fb||(async function(){
     setTimeout(function(){var y=tabs.getBoundingClientRect().top+window.pageYOffset;window.scrollTo({top:Math.max(0,y-6),behavior:'smooth'})},90);
   }).observe(sec,{attributes:true,attributeFilter:['hidden']});
   addEventListener('resize',ajustar);
+})();
+
+
+/* Modo lotado: pausa dos pedidos definida pelo dono */
+(function(){
+  var un=null;
+  function atualizar(){
+    var p=document.getElementById('pay');if(p)p.dispatchEvent(new Event('change',{bubbles:true}));
+    if(window.__pintarAberta)window.__pintarAberta();
+  }
+  window.__fb.then(function(x){
+    if(!x)return;
+    x.Au.onAuthStateChanged(x.auth,function(u){
+      if(un){un();un=null}window.__lotado=0;
+      if(!u)return;
+      un=x.F.onSnapshot(x.F.doc(x.db,'config','lotado'),function(s){window.__lotado=+((s.data()||{}).ate)||0;atualizar()},function(){});
+    });
+  });
+  setInterval(function(){if(window.__lotado&&window.__lotado<=Date.now()){window.__lotado=0;atualizar()}},15000);
 })();

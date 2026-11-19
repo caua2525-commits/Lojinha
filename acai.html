@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffd21f">
+<meta name="theme-color" content="#e8590c">
 <link rel="manifest" href="manifest-loja.webmanifest">
 <title>Monte seu açaí</title>
 <style>
-:root{--bg:#ffd21f;--card:#fff;--ink:#10295a;--mut:#46567d;--line:#10295a;--acc:#d8232a;--acci:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1d42;--card:#14295c;--ink:#fff3c4;--mut:#b9c3dc;--line:#3a5aa6;--acc:#ff6a5f;--acci:#1a0705;color-scheme:dark}}
+:root{--bg:#fff0e3;--card:#fff;--ink:#2e1708;--mut:#7a5236;--line:#9a3412;--acc:#d9480f;--acci:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#1c0f08;--card:#2b1810;--ink:#ffe8d6;--mut:#d9b8a0;--line:#c2410c;--acc:#ff8a3d;--acci:#2a1204;color-scheme:dark}}
 *,*::before,*::after{box-sizing:inherit}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -77,14 +77,15 @@ main{padding-bottom:110px}
 <div id="msg" role="status"></div>
 <div id="out" class="card" hidden>Entre na sua conta pela <a href="loja.html">loja</a> e volte aqui para montar o açaí.</div>
 <div id="app" hidden>
+<div id="favw" class="card" hidden></div>
 <h2>Escolha o açaí</h2>
 <div id="bases"></div>
 <div id="ingw" class="card" hidden>
 <div class="sh"><img id="shimg" alt="" hidden style="width:50px;height:50px;border-radius:12px;object-fit:cover;flex:none"><b id="shname" style="flex:1"></b><button class="x" id="shx" type="button" aria-label="Fechar">×</button></div>
 <div id="ingb"><b>Escolha os ingredientes</b><div id="ings" class="chips2"></div><b id="cth" style="display:block;margin-top:14px" hidden>Escolha a cobertura</b><div id="cobs" class="chips2"></div></div>
-<div class="shf"><button class="pri" id="addc" type="button">Adicionar ao pedido</button></div>
+<div class="shf"><label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;margin-bottom:6px"><input type="checkbox" id="favck" style="width:20px;height:20px"> Salvar como meu açaí de sempre</label><button class="pri" id="addc" type="button">Adicionar ao pedido</button></div>
 </div>
-<div id="cartw" class="card" hidden><div class="sh"><b>Seu pedido</b><button class="x" id="cartx" type="button" aria-label="Fechar">×</button></div><div id="cups"></div><div style="display:flex;gap:8px;margin-top:8px"><input id="cup2" placeholder="Cupom de desconto" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:0;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button id="cupb2" class="sec" type="button" style="width:auto;margin-top:0;padding:0 16px">Aplicar</button></div><select id="ret2" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><option value="">Retirada: o quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option></select><input id="obs2" maxlength="140" placeholder="Observação (opcional): sem granola, calda à parte" autocomplete="off" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button class="pri" id="go"></button><div class="mut" style="margin-top:8px">O pagamento é por Pix. O código aparece logo depois de enviar o pedido.</div></div>
+<div id="cartw" class="card" hidden><div class="sh"><b>Seu pedido</b><button class="x" id="cartx" type="button" aria-label="Fechar">×</button></div><div id="cups"></div><div style="display:flex;gap:8px;margin-top:8px"><input id="cup2" placeholder="Cupom de desconto" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:0;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button id="cupb2" class="sec" type="button" style="width:auto;margin-top:0;padding:0 16px">Aplicar</button></div><select id="ret2" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><option value="">Retirada: o quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option><option value="agendar">Agendar para outro dia ou horário…</option></select><input id="retdt2" type="datetime-local" hidden style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><input id="obs2" maxlength="140" placeholder="Observação (opcional): sem granola, calda à parte" autocomplete="off" style="width:100%;margin-top:8px;border:2px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--card);color:var(--ink);font:inherit"><button class="pri" id="go"></button><div class="mut" style="margin-top:8px">O pagamento é por Pix. O código aparece logo depois de enviar o pedido.</div></div>
 <h2>Pedidos em andamento</h2>
 <div id="orders"></div>
 <button class="sec" id="nt" hidden>Ativar avisos neste celular</button>
@@ -116,6 +117,10 @@ function clearStore(items){
   try{const d=parent.document,b=d.createElement('button');b.dataset.a='cm';b.hidden=true;d.body.appendChild(b);
     items.forEach(i=>{b.dataset.id=i.p;for(let k=0;k<i.q;k++)b.click()});b.remove()}catch(e){}
 }
+const retInfo=()=>{let v=$('#ret2').value,d=$('#retdt2').value;if(!v){try{v=parent.document.getElementById('ret').value;d=parent.document.getElementById('retdt').value}catch(e){}}if(v!=='agendar')return {txt:v||'',ts:0};if(!d)return {err:'Escolha o dia e a hora do agendamento.'};const t=Date.parse(d);if(!(t>Date.now()+10*60000))return {err:'Escolha um horário daqui a pelo menos 10 minutos.'};if(t>Date.now()+7*864e5)return {err:'Agende com até 7 dias de antecedência.'};return {txt:'Agendado para '+new Date(t).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),ts:t}};
+const FK=()=>'fav_'+(me?me.uid:'x');
+const getFav=()=>{try{return JSON.parse(localStorage.getItem(FK())||'null')}catch(e){return null}};
+const setFav=f=>{try{f?localStorage.setItem(FK(),JSON.stringify(f)):localStorage.removeItem(FK())}catch(e){}};
 const cupDesc=t=>{try{const c=parent.__cupom;if(!c)return 0;return Math.min(t,Math.round((c.pct?t*c.pct/100:c.val)*100)/100)}catch(e){return 0}};
 const cupCode=d=>{try{return d>0&&parent.__cupom?parent.__cupom.code:''}catch(e){return ''}};
 function goPed(){try{const t=parent.document.querySelector('#tabs button[data-v="ped"]');if(t)t.click()}catch(e){}}
@@ -142,11 +147,15 @@ function pixCode(o){
 }
 const hm=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;return (g('hour')%24)*60+g('minute')};
 const mins=s=>{const [h,m]=String(s||'0:0').split(':');return +h*60+(+m||0)};
-const aberta=c=>{if(c.open===false)return false;if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
+const aberta=c=>{if(c.open===false)return false;try{if((parent.__lotado||0)>Date.now())return false}catch(e){}if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
 const ntfy=(t,m)=>{if(cfg.ntfy)fetch('https://ntfy.sh/'+encodeURIComponent(cfg.ntfy)+'/publish?title='+encodeURIComponent(t)+'&priority=high&tags=shopping_cart&message='+encodeURIComponent(m),{mode:'no-cors'}).catch(()=>{})};
 function render(){
   const B=bases(),I=ings(),C=cobs();
   $('#bases').innerHTML=B.length?B.map(p=>`<button class="base" data-b="${p.id}" aria-pressed="${base===p.id}"${p.qty<=0?' disabled':''}>${p.img?`<img class="bi" src="${p.img}" alt="">`:`<span class="bi ph">${esc(p.name.slice(0,1).toUpperCase())}</span>`}<span>${esc(p.name)}</span><span>${p.qty<=0?'Esgotado':R(p.price)}</span></button>`).join(''):'<p class="mut">Os açaís ainda não foram cadastrados na loja.</p>';
+  {const f=getFav(),w=$('#favw');
+    if(f&&P(f.b)){const nomes=f.i.map(id=>P(id)?P(id).name:null).filter(Boolean);w.hidden=false;
+      w.innerHTML=`<div class="mut">Meu açaí de sempre</div><b>${esc(P(f.b).name)}</b><div class="mut">${nomes.length?nomes.map(esc).join(', '):'Sem ingredientes'}</div><div style="display:flex;gap:8px;margin-top:10px"><button class="pri" id="favadd" type="button" style="flex:1;margin-top:0">Pedir agora · ${R(cupTot({b:f.b,i:f.i.filter(id=>P(id))}))}</button><button class="sec" id="favrm" type="button" style="width:auto;margin-top:0;padding:0 16px">Remover</button></div>`}
+    else w.hidden=true}
   $('#ingw').hidden=!base;if(base&&P(base)){$('#shname').textContent=P(base).name+' · '+R(P(base).price);{const im=$('#shimg');if(P(base).img){im.src=P(base).img;im.hidden=false}else{im.hidden=true}}$('#addc').textContent='Adicionar ao pedido · '+R(cupTot({b:base,i:[...pick]}))}
   const opt=p=>`<label class="chip${pick.has(p.id)?' on':''}${p.qty<=0?' off':''}${p.img?' hasimg':''}">${p.img?`<img class="ci" src="${p.img}" alt="">`:''}<input type="checkbox" data-i="${p.id}"${pick.has(p.id)?' checked':''}${p.qty<=0?' disabled':''}><span>${esc(p.name)}</span><span class="mut">${p.qty<=0?'Esgotado':p.price>0?'Mais '+R(p.price):'Sem custo'}</span></label>`;
   $('#ings').innerHTML=I.map(opt).join('')||'<p class="mut">Nenhum ingrediente cadastrado ainda.</p>';
@@ -179,11 +188,13 @@ async function order(fromParent){
   cups.forEach((c,k)=>{const s=multi?' (copo '+(k+1)+')':'',b=P(c.b);items.push({p:b.id,n:b.name+s,q:1,pr:b.price});c.i.forEach(id=>{const g=P(id);items.push({p:id,n:'+ '+g.name+s,q:1,pr:g.price})})});
   store.forEach(i=>items.push(i));
   const total0=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,dsc=cupDesc(total0),total=Math.round((total0-dsc)*100)/100,cp=cupCode(dsc);
-  const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900),obs=(($('#obs2').value||'').trim()||(()=>{try{return parent.document.getElementById('obs').value.trim()}catch(e){return ''}})()).slice(0,140),ret=$('#ret2').value||(()=>{try{return parent.document.getElementById('ret').value}catch(e){return ''}})();
-  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name,items,total,pay:'pix',st:'novo',paid:false,code,obs,ret,cupom:cp,desc:dsc,t:Date.now()});
+  const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900),obs=(($('#obs2').value||'').trim()||(()=>{try{return parent.document.getElementById('obs').value.trim()}catch(e){return ''}})()).slice(0,140),ri=retInfo();
+  if(ri.err){msg(ri.err);return}
+  const ret=ri.txt;
+  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name,items,total,pay:'pix',st:'novo',paid:false,code,obs,ret,agenda:ri.ts,cupom:cp,desc:dsc,t:Date.now()});
   ntfy('Novo pedido de açaí','O cliente '+name+' fez um pedido de '+R(total)+'. Abra o app para ver.');
   let ok=false;try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}
-  cups=[];base=null;pick=new Set();clearStore(store);$('#obs2').value='';$('#ret2').value='';$('#cup2').value='';try{parent.document.getElementById('obs').value='';parent.document.getElementById('ret').value='';parent.document.getElementById('cupom').value='';parent.__cupom=null}catch(e){}render();if(fromParent)goPed();
+  cups=[];base=null;pick=new Set();clearStore(store);$('#obs2').value='';$('#ret2').value='';$('#retdt2').value='';$('#retdt2').hidden=true;$('#cup2').value='';try{parent.document.getElementById('obs').value='';parent.document.getElementById('ret').value='';parent.document.getElementById('retdt').value='';parent.document.getElementById('retdt').hidden=true;parent.document.getElementById('cupom').value='';parent.__cupom=null}catch(e){}render();if(fromParent)goPed();
   msg((ok?'Pedido enviado! Código Pix copiado: cole no app do banco. ':'Pedido enviado! Copie o código Pix abaixo. ')+'Seu código de retirada: '+code+'. Guarde-o.');
 }
 document.addEventListener('click',async e=>{
@@ -195,8 +206,17 @@ document.addEventListener('click',async e=>{
       storeItems().forEach(i=>u[i.p]=(u[i.p]||0)+i.q);
       const bad=Object.keys(u).find(id=>!P(id)||u[id]>P(id).qty);
       if(bad){msg('Sem estoque suficiente de '+(P(bad)?P(bad).name:'um item')+'.');return}
-      cups.push(c);base=null;pick=new Set();render();msg('Açaí adicionado ao pedido.')}
+      const sv=$('#favck').checked;cups.push(c);if(sv)setFav({b:c.b,i:c.i});$('#favck').checked=false;base=null;pick=new Set();render();msg('Açaí adicionado ao pedido.'+(sv?' Salvo como meu açaí de sempre.':''))}
     else if(b.dataset.r){cups.splice(+b.dataset.r,1);render()}
+    else if(b.id==='favadd'){
+      const f=getFav();if(!f)return;
+      if(!P(f.b)||P(f.b).qty<=0){msg('Esse açaí não está disponível agora.');return}
+      const ing=f.i.filter(id=>P(id)&&P(id).qty>0),lost=f.i.length-ing.length,c={b:f.b,i:ing},u={};
+      [...cups,c].forEach(x=>[x.b,...x.i].forEach(id=>u[id]=(u[id]||0)+1));storeItems().forEach(i=>u[i.p]=(u[i.p]||0)+i.q);
+      const bad=Object.keys(u).find(id=>!P(id)||u[id]>P(id).qty);
+      if(bad){msg('Sem estoque suficiente de '+(P(bad)?P(bad).name:'um item')+'.');return}
+      cups.push(c);render();msg('Açaí adicionado ao pedido.'+(lost?' '+lost+(lost==1?' item sem estoque ficou de fora.':' itens sem estoque ficaram de fora.'):''))}
+    else if(b.id==='favrm'){setFav(null);render();msg('Favorito removido.')}
     else if(b.id==='shx'){base=null;pick=new Set();render()}
     else if(b.id==='cartx'){cartOpen=false;render()}
     else if(b.id==='bar2'){cartOpen=true;render()}
@@ -226,6 +246,7 @@ onAuthStateChanged(auth,async u=>{
 });
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 document.addEventListener('click',e=>{if(e.target.id==='scrim'){base=null;pick=new Set();cartOpen=false;render()}});
+document.addEventListener('change',e=>{if(e.target.id==='ret2'){const d=$('#retdt2');d.hidden=e.target.value!=='agendar';const m=new Date(Date.now()+10*60000-new Date().getTimezoneOffset()*60000);d.min=m.toISOString().slice(0,16)}});
 window.acaiCupsCount=()=>cups.length;
 window.acaiInfo=()=>({n:cups.length,total:cups.reduce((s,c)=>s+cupTot(c),0)});
 window.acaiOrder=()=>order(true).catch(erro);

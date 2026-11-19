@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#ffd21f">
+<meta name="theme-color" content="#e8590c">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest-loja.webmanifest">
@@ -13,8 +13,8 @@
 <title>Loja Andrea</title>
 <script src="acai-tab.js" defer></script>
 <style>
-:root{--bg:#ffd21f;--card:#fff;--ink:#10295a;--mut:#46567d;--line:#10295a;--btn:#10295a;--btni:#fff;--acc:#d8232a;--acci:#fff;--ok:#1b7a4a;--wn:#b3201f;--soft:#fff2b0;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1d42;--card:#14295c;--ink:#fff3c4;--mut:#b9c3dc;--line:#3a5aa6;--btn:#ffd21f;--btni:#10295a;--acc:#ff6a5f;--acci:#1a0705;--ok:#5fd39a;--wn:#ff8a7e;--soft:#1d3877;color-scheme:dark}}
+:root{--bg:#fff0e3;--card:#fff;--ink:#2e1708;--mut:#7a5236;--line:#9a3412;--btn:#9a3412;--btni:#fff;--acc:#d9480f;--acci:#fff;--ok:#1b7a4a;--wn:#b3201f;--soft:#ffe0c2;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#1c0f08;--card:#2b1810;--ink:#ffe8d6;--mut:#d9b8a0;--line:#c2410c;--btn:#ff922b;--btni:#2a1204;--acc:#ff8a3d;--acci:#2a1204;--ok:#5fd39a;--wn:#ff8a7e;--soft:#3a2012;color-scheme:dark}}
 *,*::before,*::after{box-sizing:inherit}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -117,6 +117,14 @@ h1{font-size:28px}.sub{font-size:13px;margin-top:4px}
 .codigo{display:flex;flex-direction:column;align-items:center;gap:2px;margin:8px 0;padding:10px;border:2px dashed var(--line);border-radius:12px;background:var(--soft)}
 .codigo b{font:400 40px/1 "Alfa Slab One",serif;letter-spacing:6px;color:var(--ink)}
 .codigo span,.codigo small{font-size:12px;font-weight:800;color:var(--mut)}
+/* tema laranja */
+header{max-width:none;margin:0;padding-top:14px;padding-bottom:20px;padding-left:max(12px,calc((100vw - 960px)/2 + 12px));padding-right:max(12px,calc((100vw - 960px)/2 + 12px));background:linear-gradient(135deg,#e8590c,#f76707);border-radius:0 0 28px 28px;box-shadow:0 10px 28px rgba(154,52,18,.28)}
+header h1,header .sub{color:#fff}
+header #who{color:#ffe8d6}
+header .lnk{color:#fff}
+main{padding-top:14px}
+.caderno{border-left-color:var(--acc)}.caderno .big{color:var(--acc)}
+@media (prefers-color-scheme:dark){header{background:linear-gradient(135deg,#a3380a,#c2410c)}}
 </style>
 </head>
 <body>
@@ -148,7 +156,8 @@ h1{font-size:28px}.sub{font-size:13px;margin-top:4px}
 <div id="scrim" data-a="sheet" hidden></div>
 <div id="cart" role="dialog" aria-label="Seu pedido"><div class="sh"><span>Seu pedido</span><button class="x" data-a="sheet" aria-label="Fechar">×</button></div><div id="citems"></div>
 <label>Observação (opcional)<input id="obs" maxlength="140" placeholder="Ex.: sem granola, calda à parte" autocomplete="off"></label>
-<label>Retirada<select id="ret"><option value="">O quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option></select></label>
+<label>Retirada<select id="ret"><option value="">O quanto antes</option><option value="Em 15 minutos">Em 15 minutos</option><option value="Em 30 minutos">Em 30 minutos</option><option value="Em 1 hora">Em 1 hora</option><option value="agendar">Agendar para outro dia ou horário…</option></select></label>
+<input id="retdt" type="datetime-local" hidden>
 <label>Pagamento<select id="pay"><option value="pix">Pix</option><option value="din">Dinheiro na retirada</option><option value="car">Cartão na retirada</option><option value="fia" id="ofia">Fiado</option></select></label>
 <input id="trocopara" inputmode="decimal" placeholder="Troco para quanto? (opcional)" autocomplete="off" hidden>
 <div class="mut" id="pixnote">Depois de enviar o pedido, o código Pix aparece em Meus pedidos.</div>
@@ -165,6 +174,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar',ent:'Entregue',canc:'Cancelado'};
 let me=null,cust={},cfg={},prods=[],orders=[],cart={},unsubs=[],healing=false,ip=null,catF='',sheet=false,tab='loja',loaded=false,view=(()=>{try{return localStorage.getItem('lv')||'grade'}catch(e){return 'grade'}})();
 const P=id=>prods.find(p=>p.id===id);
+const retInfo=()=>{const v=$('#ret').value,d=$('#retdt').value;if(v!=='agendar')return {txt:v,ts:0};if(!d)return {err:'Escolha o dia e a hora do agendamento.'};const t=Date.parse(d);if(!(t>Date.now()+10*60000))return {err:'Escolha um horário daqui a pelo menos 10 minutos.'};if(t>Date.now()+7*864e5)return {err:'Agende com até 7 dias de antecedência.'};return {txt:'Agendado para '+new Date(t).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),ts:t}};
 const desc=t=>{const c=window.__cupom;if(!c)return 0;return Math.min(t,Math.round((c.pct?t*c.pct/100:c.val)*100)/100)};
 function msg(t){const m=$('#msg');m.textContent=t;clearTimeout(msg.t);msg.t=setTimeout(()=>m.textContent='',6000)}
 const erro=e=>msg(({'auth/invalid-credential':'E-mail ou senha incorretos.','auth/email-already-in-use':'Esse e-mail já tem conta. Toque em Entrar.','auth/weak-password':'A senha precisa ter 6 ou mais caracteres.','auth/configuration-not-found':'O login por e-mail ainda não foi ativado no Firebase.','auth/operation-not-allowed':'O login por e-mail e senha não está ativado no Firebase.','auth/network-request-failed':'Sem conexão com a internet.','auth/too-many-requests':'Muitas tentativas. Espere um pouco e tente de novo.','auth/invalid-email':'E-mail inválido.','permission-denied':'Sem permissão para essa ação.'})[e.code]||'Erro: '+(e.code||e.message));
@@ -188,7 +198,7 @@ function pixCode(o){
 }
 const hm=()=>{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;return (g('hour')%24)*60+g('minute')};
 const mins=s=>{const [h,m]=String(s||'0:0').split(':');return +h*60+(+m||0)};
-const aberta=c=>{if(c.open===false)return false;if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
+const aberta=c=>{if(c.open===false)return false;if((window.__lotado||0)>Date.now())return false;if(!c.auto)return true;const n=hm(),a=mins(c.from||'07:00'),f=mins(c.to||'23:00');return a<=f?(n>=a&&n<f):(n>=a||n<f)};
 const PR=v=>{const [i,c]=(+v||0).toFixed(2).split('.');return `<span class="price" aria-label="${R(v)}"><span class="rs">R$</span><span class="pi">${(+i).toLocaleString('pt-BR')}</span><span class="pc">,${c}</span></span>`};
 function ocard(o){
   const pix=o.pay==='pix'&&!o.paid&&o.st!=='canc';
@@ -203,7 +213,7 @@ function render(){
   const cs=[...new Set(prods.map(p=>p.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));if(catF&&!cs.includes(catF))catF='';
   $('#cats').innerHTML=cs.length?['',...cs].map(c=>`<button data-a="cat" data-v="${esc(c)}" aria-pressed="${c===catF}">${c?esc(c):'Todas'}</button>`).join(''):'';
   $('#pixnote').hidden=$('#pay').value!=='pix';
-  const cl=$('#closed');cl.hidden=open;if(!open)cl.textContent=cfg.open===false?'A loja não está recebendo pedidos agora. Volte mais tarde.':'Estamos fechados agora. Abrimos às '+(cfg.from||'07:00')+'.';
+  const cl=$('#closed');cl.hidden=open;if(!open)cl.textContent=(window.__lotado||0)>Date.now()?'Muitos pedidos no momento! Voltamos a receber pedidos às '+new Date(window.__lotado).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.':cfg.open===false?'A loja não está recebendo pedidos agora. Volte mais tarde.':'Estamos fechados agora. Abrimos às '+(cfg.from||'07:00')+'.';
   const f=$('#busca').value.trim().toLowerCase(),ids=Object.keys(cart).filter(P),tot=ids.reduce((s,id)=>s+P(id).price*cart[id],0);
   $('#grid').innerHTML=!loaded?'<div class="sk"></div>'.repeat(4):(prods.filter(p=>p.name.toLowerCase().includes(f)&&(!catF||p.cat===catF)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(p=>{const c=cart[p.id]||0;
     return `<div class="tile${p.qty<=0?' out':''}">${p.img?`<img class="timg" src="${p.img}" alt="${esc(p.name)}">`:`<div class="timg ph">${esc(p.name.slice(0,1).toUpperCase())}</div>`}<div class="info"><span class="nm">${esc(p.name)}</span>${PR(p.price)}${p.qty<=3?`<span class="st low">${p.qty<=0?'Esgotado':'Últimas '+p.qty}</span>`:''}</div><div class="act">${!open?'<button class="addb" disabled>Fechado agora</button>':p.qty<=0?'<button class="addb" disabled>Esgotado</button>':c?`<div class="stp"><button data-a="cm" data-id="${p.id}" aria-label="Tirar 1">−</button><b>${c}</b><button data-a="add" data-id="${p.id}" aria-label="Pôr 1">+</button></div>`:`<button class="addb" data-a="add" data-id="${p.id}">Adicionar</button>`}</div></div>`}).join('')||`<p class="mut em">${prods.length?'Nenhum produto encontrado. Tente outro nome ou categoria.':'A loja ainda não publicou produtos. Volte daqui a pouco.'}</p>`);
@@ -221,11 +231,12 @@ function render(){
 async function order(){
   if(!aberta(cfg)){msg('A loja está fechada agora.');return}
   const ids=Object.keys(cart).filter(P);if(!ids.length)return;
+  const ri=retInfo();if(ri.err){msg(ri.err);return}
   const code=String(100+crypto.getRandomValues(new Uint32Array(1))[0]%900);
   const items=ids.map(id=>({p:id,n:P(id).name,q:cart[id],pr:P(id).price})),total0=Math.round(items.reduce((s,i)=>s+i.pr*i.q,0)*100)/100,dsc=desc(total0),total=Math.round((total0-dsc)*100)/100,pay=$('#pay').value;
   if(pay==='fia'&&(cust.balance||0)+total>(cust.limit||0)){msg('Esse pedido passa do seu limite de fiado.');return}
-  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,code,obs:($('#obs').value||'').trim().slice(0,140),ret:$('#ret').value,troco:pay==='din'?(parseFloat(String($('#trocopara').value).replace(',','.'))||0):0,cupom:dsc>0&&window.__cupom?window.__cupom.code:'',desc:dsc,t:Date.now()});
-  cart={};sheet=false;$('#obs').value='';$('#ret').value='';$('#trocopara').value='';window.__cupom=null;{const ci=document.getElementById('cupom');if(ci)ci.value=''}render();let ok=false;
+  const ref=await addDoc(collection(db,'orders'),{uid:me.uid,name:cust.name||me.displayName||'Cliente',items,total,pay,st:'novo',paid:false,code,obs:($('#obs').value||'').trim().slice(0,140),ret:ri.txt,agenda:ri.ts,troco:pay==='din'?(parseFloat(String($('#trocopara').value).replace(',','.'))||0):0,cupom:dsc>0&&window.__cupom?window.__cupom.code:'',desc:dsc,t:Date.now()});
+  cart={};sheet=false;$('#obs').value='';$('#ret').value='';$('#retdt').value='';$('#retdt').hidden=true;$('#trocopara').value='';window.__cupom=null;{const ci=document.getElementById('cupom');if(ci)ci.value=''}render();let ok=false;
   if(cfg.ntfy)fetch('https://ntfy.sh/'+encodeURIComponent(cfg.ntfy)+'/publish?title='+encodeURIComponent('Novo pedido')+'&priority=high&tags=shopping_cart&message='+encodeURIComponent(items.reduce((s,i)=>s+i.q,0)+' item(ns), '+R(total)+'. Abra o app para ver.'),{mode:'no-cors'}).catch(()=>{});
   if(pay==='pix'&&cfg.pix){try{await navigator.clipboard.writeText(pixCode({id:ref.id,total}));ok=true}catch(e){}}
   msg((ok?'Pedido enviado! Código Pix copiado: cole no app do seu banco. ':'Pedido enviado! ')+'Seu código de retirada: '+code+'. Guarde-o.');
