@@ -399,3 +399,23 @@ window.__fb=window.__fb||(async function(){
     });
   });
 })();
+
+
+/* Aba Açaí ocupa a tela toda, com as abas sempre à vista */
+(function(){
+  var sec=document.getElementById('sec-acai'),tabs=document.getElementById('tabs');
+  if(!sec||!tabs)return;
+  var st=document.createElement('style');
+  st.textContent='#tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;box-shadow:0 6px 14px rgba(16,41,90,.2)}';
+  document.head.appendChild(st);
+  function ajustar(){
+    var f=sec.querySelector('iframe');if(!f||sec.hidden)return;
+    f.style.minHeight='0';f.style.height=Math.max(360,window.innerHeight-tabs.offsetHeight-16)+'px';
+  }
+  new MutationObserver(function(){
+    if(sec.hidden)return;
+    ajustar();
+    setTimeout(function(){var y=tabs.getBoundingClientRect().top+window.pageYOffset;window.scrollTo({top:Math.max(0,y-6),behavior:'smooth'})},90);
+  }).observe(sec,{attributes:true,attributeFilter:['hidden']});
+  addEventListener('resize',ajustar);
+})();
