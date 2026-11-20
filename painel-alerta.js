@@ -499,3 +499,42 @@ window.__fb=window.__fb||(async function(){
     });
   });
 })();
+
+
+/* Avise-me quando chegar: o dono vê quantos clientes esperam cada produto */
+(function(){
+  var lista=document.getElementById('lista'),sec=document.getElementById('v-resumo');
+  var cont={},nomes={},un=null;
+  var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+  var card=null;
+  function marcarLista(){
+    if(!lista)return;
+    lista.querySelectorAll(':scope>.row').forEach(function(r){
+      var inp=r.querySelector('[data-id]');if(!inp)return;
+      var n=cont[inp.dataset.id]||0,el=r.querySelector('.espera');
+      if(!n){if(el)el.remove();return}
+      if(!el){el=document.createElement('div');el.className='espera';el.style.cssText='background:#e3ecff;color:#10295a;border-radius:10px;padding:6px 10px;margin:6px 0;font-size:13px;font-weight:700';var rh=r.querySelector('.rh');if(rh)rh.after(el);else r.insertBefore(el,r.firstChild)}
+      el.textContent=n+(n==1?' cliente espera':' clientes esperam')+' a reposição';
+    });
+  }
+  function marcarResumo(){
+    if(!sec)return;
+    if(!card){card=document.createElement('div');card.className='card';card.id='espera';var g=document.getElementById('graficos');if(g)g.after(card);else sec.insertBefore(card,sec.firstChild)}
+    var ids=Object.keys(cont).sort(function(a,b){return cont[b]-cont[a]}).slice(0,8);
+    card.hidden=!ids.length;
+    card.innerHTML='<b>Clientes esperando reposição</b>'+ids.map(function(id){return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-weight:700"><span>'+esc(nomes[id]||'Produto')+'</span><span>'+cont[id]+'</span></div>'}).join('');
+  }
+  if(lista)new MutationObserver(marcarLista).observe(lista,{childList:true});
+  window.__fb.then(function(x){
+    if(!x)return;
+    x.Au.onAuthStateChanged(x.auth,function(u){
+      if(un){un();un=null}cont={};nomes={};marcarLista();marcarResumo();
+      if(!u)return;
+      un=x.F.onSnapshot(x.F.collection(x.db,'avisos'),function(s){
+        cont={};nomes={};
+        s.forEach(function(d){var v=d.data();cont[v.pid]=(cont[v.pid]||0)+1;nomes[v.pid]=v.name||nomes[v.pid]});
+        marcarLista();marcarResumo();
+      },function(){});
+    });
+  });
+})();

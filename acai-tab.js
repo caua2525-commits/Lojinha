@@ -474,3 +474,72 @@ window.__fb=window.__fb||(async function(){
     var l=linha(b.closest('.ci'));if(l)press(l.id,l.q);
   });
 })();
+
+
+/* Avise-me quando chegar: o cliente pede aviso de produto esgotado */
+(function(){
+  var grid=document.getElementById('grid'),sec=document.getElementById('sec-loja');if(!grid||!sec)return;
+  var st=document.createElement('style');
+  st.textContent='.avisar{width:100%;margin-top:6px;background:transparent!important;color:var(--ink)!important;border:2px solid var(--line)!important;font-size:12px!important;padding:7px 4px!important;cursor:pointer;opacity:1!important}.avisar.on{background:var(--ok)!important;color:#fff!important;border-color:var(--ok)!important}#chegou{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--ok);color:#fff;border-radius:14px;padding:11px 14px;margin:0 0 10px;font-weight:800}#chegou button{background:rgba(255,255,255,.25);border:0;border-radius:50%;width:28px;height:28px;color:#fff;font-size:18px;line-height:1;flex:none}';
+  document.head.appendChild(st);
+  var byName={},byId={},subs={},ctx=null,me=null,un=[],avisados={},chegaram=[],banner=null;
+  function say(t){var m=document.getElementById('msg');if(!m)return;m.textContent=t;clearTimeout(say.t);say.t=setTimeout(function(){m.textContent=''},5000)}
+  function marcar(){
+    grid.querySelectorAll('.tile.out').forEach(function(t){
+      var act=t.querySelector('.act'),nm=t.querySelector('.nm');if(!act||!nm)return;
+      var id=byName[nm.textContent.trim()];if(!id)return;
+      var b=act.querySelector('.avisar');
+      if(!b){b=document.createElement('button');b.type='button';b.className='addb avisar';b.dataset.aviso=id;act.appendChild(b)}
+      var on=!!subs[id];b.classList.toggle('on',on);b.textContent=on?'Vamos avisar você':'Avisar quando chegar';
+    });
+  }
+  function faixa(){
+    if(!banner){banner=document.createElement('div');banner.id='chegou';sec.insertBefore(banner,sec.firstChild)}
+    banner.hidden=!chegaram.length;
+    banner.innerHTML='<span>Chegou o que você esperava: '+chegaram.map(function(n){return n.replace(/[&<>"]/g,'')}).join(', ')+'</span><button type="button" aria-label="Fechar">\u00d7</button>';
+    banner.querySelector('button').onclick=function(){chegaram=[];faixa()};
+  }
+  function chegou(p){
+    chegaram.push(p.name);faixa();say('Chegou: '+p.name+'! Já pode pedir.');
+    if(navigator.vibrate)navigator.vibrate([200,100,200]);
+    if(window.Notification&&Notification.permission==='granted'){
+      var t='Chegou: '+p.name,o={body:'Já está disponível na loja.',icon:'loja-192.png'};
+      (navigator.serviceWorker?navigator.serviceWorker.ready.then(function(r){return r.showNotification(t,o)}):Promise.reject()).catch(function(){try{new Notification(t,o)}catch(e){}});
+    }
+  }
+  function conferir(){
+    if(!ctx||!me)return;
+    Object.keys(subs).forEach(function(id){
+      var p=byId[id];
+      if(p&&p.qty>0&&!avisados[id]){
+        avisados[id]=true;chegou(p);
+        ctx.F.deleteDoc(ctx.F.doc(ctx.db,'avisos',id+'_'+me.uid)).catch(function(){});
+      }
+    });
+  }
+  new MutationObserver(marcar).observe(grid,{childList:true});
+  grid.addEventListener('click',async function(e){
+    var b=e.target.closest('[data-aviso]');if(!b)return;
+    if(!ctx||!me){say('Entre na sua conta para pedir o aviso.');return}
+    var id=b.dataset.aviso,ref=ctx.F.doc(ctx.db,'avisos',id+'_'+me.uid);
+    try{
+      if(subs[id]){await ctx.F.deleteDoc(ref);say('Aviso cancelado.')}
+      else{await ctx.F.setDoc(ref,{pid:id,uid:me.uid,name:(byId[id]&&byId[id].name)||'',t:Date.now()});delete avisados[id];say('Combinado! Você será avisado quando chegar.')}
+    }catch(er){say('Não consegui salvar o aviso. Tente de novo.')}
+  });
+  window.__fb.then(function(x){
+    if(!x)return;ctx=x;
+    x.Au.onAuthStateChanged(x.auth,function(u){
+      un.forEach(function(f){f()});un=[];subs={};me=u;
+      if(!u)return;
+      un.push(x.F.onSnapshot(x.F.collection(x.db,'products'),function(s){
+        byName={};byId={};s.forEach(function(d){var v=d.data(),n=String(v.name||'').trim();byName[n]=d.id;byId[d.id]={name:n,qty:+v.qty||0}});
+        marcar();conferir();
+      },function(){}));
+      un.push(x.F.onSnapshot(x.F.query(x.F.collection(x.db,'avisos'),x.F.where('uid','==',u.uid)),function(s){
+        subs={};s.forEach(function(d){subs[d.data().pid]=true});
+        marcar();conferir();
+      },function(){}));
+    });
+  });
+})();
