@@ -538,3 +538,32 @@ window.__fb=window.__fb||(async function(){
     });
   });
 })();
+
+
+/* Painel: guarda a venda em andamento (aba Vender) e evita atualizar sem querer */
+(function(){
+  var st=document.createElement('style');st.textContent='html,body{overscroll-behavior-y:contain}';document.head.appendChild(st);
+  var K='pe_venda',TTL=12*3600*1000,g=function(id){return document.getElementById(id)};
+  function salvar(){
+    try{
+      if(!Object.keys(cart).length){localStorage.removeItem(K);return}
+      localStorage.setItem(K,JSON.stringify({t:Date.now(),c:cart,p:pay,r:g('rec').value,n:g('ncli').value,k:g('cli').value}));
+    }catch(e){}
+  }
+  try{
+    var d=JSON.parse(localStorage.getItem(K)||'null');
+    if(d&&Date.now()-d.t<TTL&&d.c){
+      var ok={};
+      Object.keys(d.c).forEach(function(id){var p=P(id);if(p&&p.qty>0)ok[id]=Math.min(+d.c[id]||0,p.qty)});
+      if(Object.keys(ok).length){
+        cart=ok;if(d.p)pay=d.p;
+        g('rec').value=d.r||'';g('ncli').value=d.n||'';
+        render();
+        if(d.k)g('cli').value=d.k;
+      }
+    }
+    var tv=sessionStorage.getItem('ptab');if(tv&&tv!=='vender')tab(tv);
+  }catch(e){}
+  ['click','input','change'].forEach(function(ev){document.addEventListener(ev,function(){setTimeout(salvar,60)})});
+  document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('nav button[data-v]');if(b)try{sessionStorage.setItem('ptab',b.dataset.v)}catch(x){}});
+})();
