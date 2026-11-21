@@ -567,3 +567,11 @@ window.__fb=window.__fb||(async function(){
   ['click','input','change'].forEach(function(ev){document.addEventListener(ev,function(){setTimeout(salvar,60)})});
   document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('nav button[data-v]');if(b)try{sessionStorage.setItem('ptab',b.dataset.v)}catch(x){}});
 })();
+
+
+/* Clientes do app não têm mais fiado: some o botão de liberar e o limite */
+(function(){
+  var st=document.createElement('style');
+  st.textContent='#clist .two,#clist [data-a="ofia"]{display:none!important}';
+  document.head.appendChild(st);
+})();

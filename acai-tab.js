@@ -1,7 +1,7 @@
 (function(){
   var tabs=document.getElementById('tabs'),fia=document.getElementById('sec-fia');
   if(!tabs||!fia)return;
-  tabs.style.gridTemplateColumns='repeat(4,1fr)';
+  tabs.style.gridTemplateColumns='repeat(3,1fr)';
   var b=document.createElement('button');
   b.dataset.a='t';b.dataset.v='acai';b.setAttribute('aria-pressed','false');b.textContent='Açaí';
   tabs.children[0].after(b);
@@ -570,7 +570,7 @@ window.__fb=window.__fb||(async function(){
         d.it.forEach(function(l){press('add',l.id,l.q)});
         var o=document.getElementById('obs');if(o)o.value=d.obs||'';
         poe('ret',d.ret);var r=document.getElementById('retdt');if(r)r.value=d.rdt||'';
-        poe('pay',d.pay);var tr=document.getElementById('trocopara');if(tr)tr.value=d.tr||'';
+        poe('pay',d.pay==='fia'?'':d.pay);var tr=document.getElementById('trocopara');if(tr)tr.value=d.tr||'';
         if(d.cup&&window.__aplicarCupom)window.__aplicarCupom(d.cup).then(function(){var p=document.getElementById('pay');if(p)p.dispatchEvent(new Event('change',{bubbles:true}))});
         if(d.open){var bar=document.getElementById('bar');if(bar&&!bar.hidden)bar.click()}
       }
@@ -597,3 +597,19 @@ window.__fb=window.__fb||(async function(){
 
 /* Evita atualizar a página sem querer ao puxar a tela para baixo */
 (function(){var st=document.createElement('style');st.textContent='html,body{overscroll-behavior-y:contain}';document.head.appendChild(st)})();
+
+
+/* Fiado: some para os clientes (só o dono usa, pelo painel) */
+(function(){
+  var st=document.createElement('style');
+  st.textContent='#tabs{grid-template-columns:repeat(3,1fr)!important}#tabs button[data-v="fia"],#sec-fia{display:none!important}';
+  document.head.appendChild(st);
+  var o=document.getElementById('ofia'),p=document.getElementById('pay');
+  function trava(){
+    if(o&&(!o.hidden||!o.disabled)){o.hidden=true;o.disabled=true}
+    if(p&&p.value==='fia'){p.value='pix';p.dispatchEvent(new Event('change',{bubbles:true}))}
+  }
+  trava();
+  if(o)new MutationObserver(trava).observe(o,{attributes:true,attributeFilter:['hidden','disabled']});
+  if(p)p.addEventListener('change',trava);
+})();
