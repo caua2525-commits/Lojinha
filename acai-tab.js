@@ -410,7 +410,7 @@ window.__fb=window.__fb||(async function(){
   var sec=document.getElementById('sec-acai'),tabs=document.getElementById('tabs');
   if(!sec||!tabs)return;
   var st=document.createElement('style');
-  st.textContent='#tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;box-shadow:0 6px 14px rgba(16,41,90,.2)}';
+  st.textContent='#tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;box-shadow:0 6px 14px rgba(16,41,90,.2)}';
   document.head.appendChild(st);
   function ajustar(){
     var f=sec.querySelector('iframe');if(!f||sec.hidden)return;
