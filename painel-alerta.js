@@ -575,3 +575,21 @@ window.__fb=window.__fb||(async function(){
   st.textContent='#clist .two,#clist [data-a="ofia"]{display:none!important}';
   document.head.appendChild(st);
 })();
+
+/* Fiado: mostra só a dívida atual; o que já foi quitado sai da lista (continua guardado para o Resumo) */
+(function(){
+  var antigo=window.hist;
+  window.hist=function(id,open){
+    try{
+      var led=S.led.filter(function(l){return l.cid===id}).slice().sort(function(a,b){return a.t-b.t}),run=0,corte=0;
+      led.forEach(function(l){run=Math.round((run+l.amt)*100)/100;if(run<=0.005)corte=l.t});
+      var ev=[].concat(
+        S.sales.filter(function(s){return s.cid===id&&s.pay==='fia'}).map(function(s){return {t:s.t,x:s.items.map(function(i){return i.q+'x '+esc(i.n)}).join(', '),v:s.tot}}),
+        S.led.filter(function(l){return l.cid===id&&l.amt<0}).map(function(l){return {t:l.t,x:'Pagamento ('+PL[l.m||'din']+')',v:l.amt}})
+      ).filter(function(e){return e.t>corte}).sort(function(a,b){return b.t-a.t}).slice(0,40);
+      if(!ev.length)return '';
+      return '<details'+(open?' open':'')+'><summary class="mut">Itens pegos e pagamentos ('+ev.length+')</summary>'+ev.map(function(e){return '<div class="pl"><span>'+new Date(e.t).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+hh(e.t)+': '+e.x+'</span><b>'+R(e.v)+'</b></div>'}).join('')+'</details>';
+    }catch(e){return antigo?antigo(id,open):''}
+  };
+  try{renderFia()}catch(e){}
+})();
