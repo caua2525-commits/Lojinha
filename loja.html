@@ -166,9 +166,9 @@ main{padding-top:14px}
 <script type="module" onerror="document.getElementById('msg').textContent='Não consegui carregar o Firebase. Confira a internet e tente de novo.'">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,collection,doc,setDoc,addDoc,updateDoc,onSnapshot,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,initializeFirestore,collection,doc,setDoc,addDoc,updateDoc,onSnapshot,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
-const auth=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s);
+const auth=getAuth(app),db=initializeFirestore(app,{experimentalAutoDetectLongPolling:true}),$=s=>document.querySelector(s);
 const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ST={novo:'Aguardando a loja',sep:'Separado para você',pronto:'Pronto para retirar',ent:'Entregue',canc:'Cancelado'};

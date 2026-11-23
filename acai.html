@@ -97,16 +97,16 @@ html,body{overscroll-behavior-y:contain}
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,collection,doc,getDoc,addDoc,onSnapshot,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,initializeFirestore,disableNetwork,enableNetwork,collection,doc,getDoc,addDoc,onSnapshot,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const app=initializeApp({apiKey:"AIzaSyAR7RtHesHauHTugXU6YMHA1j3dpVrxXYw",authDomain:"loja-andrea.firebaseapp.com",projectId:"loja-andrea",storageBucket:"loja-andrea.firebasestorage.app",messagingSenderId:"174611699950",appId:"1:174611699950:web:a7d93ea5e8d0e4effa3bff"});
-const auth=getAuth(app),db=getFirestore(app),$=s=>document.querySelector(s);
+const auth=getAuth(app),db=initializeFirestore(app,{experimentalAutoDetectLongPolling:true}),$=s=>document.querySelector(s);
 const R=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nz=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 const ST={novo:'Aguardando a loja',sep:'Em preparo',pronto:'Pronto para retirar'};
 let restored=false,cartOpen=false,me=null,name='Cliente',cfg={},prods=[],orders=[],cups=[],base=null,pick=new Set(),prev=null,unsubs=[],told={};
 try{told=JSON.parse(localStorage.getItem('told')||'{}')}catch(e){}
-const P=id=>prods.find(p=>p.id===id),bases=()=>prods.filter(p=>nz(p.cat)==='acai'),ings=()=>prods.filter(p=>nz(p.cat)==='ingredientes').sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+const P=id=>prods.find(p=>p.id===id),bases=()=>prods.filter(p=>nz(p.cat)==='acai'),ings=()=>prods.filter(p=>nz(p.cat).indexOf('ingrediente')===0).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
 const cobs=()=>prods.filter(p=>/^cobertura/.test(nz(p.cat))).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
 function storeItems(){
   if(parent===window)return [];
@@ -187,7 +187,7 @@ function render(){
   $('#bar2').hidden=!(cups.length&&!base&&!cartOpen);$('#b2n').textContent=cups.length+(cups.length==1?' açaí':' açaís');saveState();
   $('#cups').innerHTML=cups.map((c,k)=>`<div class="cup"><span><b>${esc(P(c.b)?P(c.b).name:'Açaí')}</b><br><span class="mut">${c.i.map(id=>esc(P(id)?P(id).name:'')).join(', ')||'Sem ingredientes'}</span></span><span><b>${R(cupTot(c))}</b><br><button class="del" data-r="${k}">Remover</button></span></div>`).join('')+store.map(i=>`<div class="cup"><span>${i.q}x ${esc(i.n)}<br><span class="mut">Item da loja</span></span><b>${R(i.pr*i.q)}</b></div>`).join('');
   const dsc0=cups.length?cupDesc(tot):0;$('#go').textContent='Fazer pedido: '+R(tot-dsc0)+(dsc0>0?' (cupom aplicado)':'');$('#b2t').textContent=R(tot-dsc0);
-  const isA=i=>{const p=P(i.p),c=p?nz(p.cat):'';return c==='acai'||c==='ingredientes'||c.indexOf('cobertura')===0};
+  const isA=i=>{const p=P(i.p),c=p?nz(p.cat):'';return c==='acai'||c.indexOf('ingrediente')===0||c.indexOf('cobertura')===0};
   const ac=orders.filter(o=>ST[o.st]&&(o.items||[]).some(isA)).sort((a,b)=>b.t-a.t);
   $('#orders').innerHTML=ac.map(o=>`<div class="card"><div class="rh"><span class="pill ${o.st}">${ST[o.st]}</span><b>${R(o.total)}</b></div>${o.code&&['novo','sep','pronto'].includes(o.st)?`<div class="cod">Código de retirada <b>${o.code}</b></div>`:''}<div class="mut">${(o.items||[]).map(i=>`${i.q}x ${esc(i.n)}`).join(', ')}</div>`
     +(o.pay==='pix'&&!o.paid?(cfg.pix?`<div class="mut" style="margin-top:8px">Pague ${R(o.total)} por Pix: copie o código e cole no app do banco, em Pix Copia e Cola.</div><textarea readonly rows="4" onfocus="this.select()">${pixCode(o)}</textarea><button class="sec" data-c="${o.id}">Copiar código Pix</button><button class="pri" data-p="${o.id}"${told[o.id]?' disabled':''}>${told[o.id]?'Aviso enviado. Aguarde a confirmação':'Já paguei'}</button>`:'<div class="mut">A loja ainda não cadastrou a chave Pix. Fale com a loja.</div>'):'<div class="mut">Pagamento confirmado pela loja.</div>')+'</div>').join('')||'<p class="mut">Nenhum pedido em andamento.</p>';
@@ -270,6 +270,9 @@ document.addEventListener('click',e=>{if(e.target.id==='scrim'){base=null;pick=n
 document.addEventListener('change',e=>{if(e.target.id==='ret2'){const d=$('#retdt2');d.hidden=e.target.value!=='agendar';const m=new Date(Date.now()+10*60000-new Date().getTimezoneOffset()*60000);d.min=m.toISOString().slice(0,16)}});
 document.addEventListener('input',e=>{if(e.target.id==='obs2'||e.target.id==='retdt2')saveState()});
 document.addEventListener('change',e=>{if(e.target.id==='ret2')saveState()});
+{let oculto=0;const religar=()=>{disableNetwork(db).then(()=>enableNetwork(db)).catch(()=>{})};
+document.addEventListener('visibilitychange',()=>{if(document.hidden){oculto=Date.now();return}const fora=oculto?Date.now()-oculto:0;oculto=0;if(fora>20000)religar()});
+addEventListener('online',religar)}
 window.acaiClear=()=>{cups=[];base=null;pick=new Set();cartOpen=false;render()};
 window.acaiCupsCount=()=>cups.length;
 window.acaiInfo=()=>({n:cups.length,total:cups.reduce((s,c)=>s+cupTot(c),0)});
